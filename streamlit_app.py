@@ -33,6 +33,7 @@ import ui  # noqa: E402
 from data_pipeline import load_and_clean  # noqa: E402
 
 ui.inject_css()
+ui.reset_cards()
 WEEKDAYS = an.WEEKDAYS
 MONEY = dict(tickprefix="₺", tickformat="~s")
 
@@ -118,7 +119,7 @@ with tabs[0]:
                      if d_rev is not None else "")
         st.markdown(ui.hero_card("Net revenue", an.fmt_money(k["revenue"]), delta_txt, mon["Revenue"].tolist(),
                                  hero_stats), unsafe_allow_html=True)
-    with c2, st.container(border=True):
+    with c2, ui.card():
         orders_ct = fdf.groupby("CustomerType", observed=True)["InvoiceNo"].nunique().sort_values(ascending=False)
         top2 = orders_ct.head(2)
         cc1, cc2 = st.columns([1, 1.1])
@@ -136,7 +137,7 @@ with tabs[0]:
             fig.update_layout(height=200, showlegend=False, margin=dict(t=6, b=6, l=0, r=0),
                               annotations=[dict(text=f"<b>{an.fmt_money(k['aov'])}</b><br>avg order", showarrow=False,
                                                 font=dict(size=12, color=ui.INK))])
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(fig, theme=None, use_container_width=True, config={"displayModeBar": False})
     with c3:
         last_cust = kc["customers"] / max(k["customers"], 1)
         st.markdown(ui.mini_tile(f"{k['customers']:,}", "customers", "Active customers",
@@ -154,7 +155,7 @@ with tabs[0]:
                                  ui.PINK), unsafe_allow_html=True)
 
     c1, c2 = st.columns([2.1, 1], gap="medium")
-    with c1, st.container(border=True):
+    with c1, ui.card():
         ui.card_title("Top titles", f"Best sellers by net revenue · change = Q4 vs Q3")
         q = fdf["InvoiceDate"].dt.quarter
         tt = (fdf.groupby("Description", observed=True)
@@ -168,7 +169,7 @@ with tabs[0]:
             rows.append({"title": title, "sub": f"#{i} · {r['Units']:,.0f} units", "cat": r["Category"],
                          "value": an.fmt_money(r["Revenue"]), "badge": ui.badge(g_)})
         st.markdown(ui.activity_list(rows), unsafe_allow_html=True)
-    with c2, st.container(border=True):
+    with c2, ui.card():
         ui.card_title("Order days", "Revenue by weekday")
         wd = fdf.groupby("Weekday")["Revenue"].sum().reindex(range(7), fill_value=0)
         colors = [ui.GREY_BAR] * 7
@@ -179,13 +180,13 @@ with tabs[0]:
         fig.add_scatter(x=[d[0] for d in WEEKDAYS], y=wd.values * 0.55, mode="lines", line=dict(color=ui.INK, width=1.6,
                         shape="spline"), hoverinfo="skip")
         fig.update_layout(height=270, showlegend=False, bargap=0.45, yaxis=dict(showticklabels=False, showgrid=False))
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, theme=None, use_container_width=True, config={"displayModeBar": False})
         best_day = WEEKDAYS[int(wd.values.argmax())]
         st.markdown(f'<div class="legend-row" style="margin:0 0 6px 4px">Busiest day<b>{best_day} · '
                     f'{wd.max() / wd.sum():.0%} of revenue</b></div>', unsafe_allow_html=True)
 
     ui.section("Monthly performance", "Net revenue (bars) and number of orders (line).")
-    with st.container(border=True):
+    with ui.card():
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         bar_colors = [ui.GREY_BAR] * len(mon)
         if len(mon):
@@ -197,14 +198,14 @@ with tabs[0]:
         fig.update_xaxes(dtick="M1", tickformat="%b")
         fig.update_yaxes(secondary_y=False, **MONEY)
         fig.update_yaxes(secondary_y=True, showgrid=False, title_text="Orders")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, theme=None, use_container_width=True)
 
     ui.section("Revenue mix")
     c1, c2, c3 = st.columns(3, gap="medium")
     for col_, (title, dim, color) in zip([c1, c2, c3], [("By document type", "DocType", ui.CORAL),
                                                         ("By customer type", "CustomerType", ui.PINK),
                                                         ("Top cities", "City", ui.INK)]):
-        with col_, st.container(border=True):
+        with col_, ui.card():
             ui.card_title(title)
             mix = fdf.groupby(dim, observed=True)["Revenue"].sum().nlargest(6).sort_values().reset_index()
             mix[dim] = mix[dim].astype(str)
@@ -212,7 +213,7 @@ with tabs[0]:
             fig.update_traces(marker=dict(color=color, cornerradius=8), textposition="outside", cliponaxis=False)
             fig.update_layout(height=250, yaxis_title=None, xaxis_title=None, xaxis=dict(showticklabels=False),
                               yaxis=dict(showgrid=False))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
 
 # =============================================================================
 # Sales
@@ -225,14 +226,14 @@ with tabs[1]:
 
     ui.section("Category performance", "Area represents revenue; shading represents average discount.")
     c1, c2 = st.columns([3, 2])
-    with c1, st.container(border=True):
+    with c1, ui.card():
         fig = px.treemap(cat.head(30), path=[px.Constant("All categories"), "Category"], values="Revenue",
                          color="Discount", color_continuous_scale=ui.SEQ)
         fig.update_traces(marker=dict(cornerradius=3), root_color="white",
                           hovertemplate="<b>%{label}</b><br>Revenue ₺%{value:,.0f}<extra></extra>")
         fig.update_layout(height=430, margin=dict(t=10, l=0, r=0, b=0), coloraxis_colorbar=dict(title="Disc.", tickformat=".0%"))
-        st.plotly_chart(fig, use_container_width=True)
-    with c2, st.container(border=True):
+        st.plotly_chart(fig, theme=None, use_container_width=True)
+    with c2, ui.card():
         ui.card_title(f"Top {show_n} categories")
         st.dataframe(cat.head(show_n)[["Category", "Revenue", "Units", "Share"]], hide_index=True,
                      use_container_width=True, height=400,
@@ -242,7 +243,7 @@ with tabs[1]:
                                                                              max_value=float(cat["Share"].max()))})
 
     ui.section("Seasonality", "Monthly revenue of the twelve largest categories.")
-    with st.container(border=True):
+    with ui.card():
         topc = cat.head(12)["Category"]
         hm = (fdf[fdf["Category"].isin(topc)].groupby(["Category", "Month"], observed=True)["Revenue"].sum()
               .unstack(fill_value=0))
@@ -250,12 +251,12 @@ with tabs[1]:
         hm.columns = [f"{c:%b}" for c in hm.columns]
         fig = px.imshow(hm, aspect="auto", color_continuous_scale=ui.SEQ, labels=dict(color="Revenue", x="", y=""))
         fig.update_layout(height=420, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, theme=None, use_container_width=True)
 
     c1, c2 = st.columns(2)
     with c1:
         ui.section("Best-selling titles", "Ranked by net revenue.")
-        with st.container(border=True):
+        with ui.card():
             tp = (fdf.groupby("Description", observed=True)
                   .agg(Revenue=("Revenue", "sum"), Units=("Quantity", "sum"), Customers=("CustomerID", "nunique"))
                   .nlargest(show_n, "Revenue").reset_index())
@@ -264,21 +265,21 @@ with tabs[1]:
                          hover_data={"Units": ":,.0f", "Customers": True, "Title": False, "Description": True})
             fig.update_traces(marker_color=ui.PRIMARY)
             fig.update_layout(height=max(340, 30 * show_n), yaxis_title=None, xaxis=MONEY)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
     with c2:
         ui.section("Order-day pattern", "Revenue by weekday and month.")
-        with st.container(border=True):
+        with ui.card():
             wd = fdf.groupby(["Weekday", "Month"])["Revenue"].sum().unstack(fill_value=0)
             wd.index = [WEEKDAYS[i] for i in wd.index]
             wd.columns = [f"{c:%b}" for c in wd.columns]
             fig = px.imshow(wd, aspect="auto", color_continuous_scale=ui.SEQ_WARM, labels=dict(color="Revenue", x="", y=""))
             fig.update_layout(height=max(340, 30 * show_n), margin=dict(t=10))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
 
     @st.fragment
     def custom_breakdown() -> None:
         ui.section("Custom breakdown", "Choose a dimension and a measure.")
-        with st.container(border=True):
+        with ui.card():
             c1, c2, c3 = st.columns([2, 2, 1])
             dims = {"Month": "Month", "Quarter": "Quarter", "City": "City", "Category": "Category",
                     "Document type": "DocType", "Customer type": "CustomerType"}
@@ -296,7 +297,7 @@ with tabs[1]:
                    else px.line(dyn, x=dims[g], y=col, markers=True))
             fig.update_traces(marker_color=ui.PRIMARY) if ctype == "Bar" else fig.update_traces(line_color=ui.PRIMARY)
             fig.update_layout(height=360, yaxis_title=mname, xaxis_title=None)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
 
     custom_breakdown()
 
@@ -315,20 +316,20 @@ with tabs[2]:
     seg["RevenueShare"] = seg["Revenue"] / seg["Revenue"].sum()
     seg_colors = {s: ui.PALETTE[i % len(ui.PALETTE)] for i, s in enumerate(seg["Segment"])}
     c1, c2 = st.columns([3, 2])
-    with c1, st.container(border=True):
+    with c1, ui.card():
         ui.card_title("Recency vs. frequency", "Bubble size represents revenue.")
         fig = px.scatter(rfm, x="Recency", y="Frequency", size="Monetary", color="Segment", log_y=True,
                          color_discrete_map=seg_colors, size_max=36, opacity=0.75,
                          hover_data={"CustomerID": True, "Monetary": ":,.0f", "City": True})
         fig.update_layout(height=400, xaxis_title="Days since last order", yaxis_title="Orders (log)")
-        st.plotly_chart(fig, use_container_width=True)
-    with c2, st.container(border=True):
+        st.plotly_chart(fig, theme=None, use_container_width=True)
+    with c2, ui.card():
         ui.card_title("Revenue share by segment")
         fig = px.bar(seg, x="RevenueShare", y="Segment", orientation="h", color="Segment",
                      color_discrete_map=seg_colors, text_auto=".0%")
         fig.update_layout(height=400, showlegend=False, xaxis_tickformat=".0%", xaxis_title=None, yaxis_title=None,
                           yaxis=dict(categoryorder="total ascending"))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, theme=None, use_container_width=True)
     st.dataframe(seg, hide_index=True, use_container_width=True,
                  column_config={"Revenue": st.column_config.NumberColumn(format="₺%.0f"),
                                 "AvgRevenue": st.column_config.NumberColumn("Avg revenue per customer", format="₺%.0f"),
@@ -350,7 +351,7 @@ with tabs[2]:
                                     "AvgGapDays": st.column_config.NumberColumn("Usual gap (days)", format="%.0f")})
     with c2:
         ui.section("Customer concentration", "Cumulative share of revenue by share of customers.")
-        with st.container(border=True):
+        with ui.card():
             cs = rfm["Monetary"].sort_values(ascending=False).reset_index(drop=True)
             par = pd.DataFrame({"Customers": np.arange(1, len(cs) + 1) / len(cs), "Revenue": cs.cumsum() / cs.sum()})
             fig = px.area(par, x="Customers", y="Revenue")
@@ -359,12 +360,12 @@ with tabs[2]:
                           annotation_font_color=ui.ACCENT)
             fig.update_layout(height=300, xaxis_tickformat=".0%", yaxis_tickformat=".0%",
                               xaxis_title="Share of customers", yaxis_title="Cumulative revenue")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
 
     ui.section("Cross-selling opportunities",
                "Category pairs that appear on the same invoice more often than chance (association rules).")
     c1, c2 = st.columns([1, 3])
-    with c1, st.container(border=True):
+    with c1, ui.card():
         st.slider("Minimum support", 0.005, 0.05, 0.01, 0.005, format="%.3f", key="min_sup")
         min_lift = st.slider("Minimum lift", 1.0, 5.0, 1.5, 0.1)
         st.caption("Support: share of invoices with both categories. Confidence: probability of the second given "
@@ -380,13 +381,13 @@ with tabs[2]:
                                         "Lift": st.column_config.NumberColumn(format="%.2f")})
 
     ui.section("Discount effectiveness", "Average units per order line by discount band and customer type.")
-    with st.container(border=True):
+    with ui.card():
         dd_ = fdf.assign(Band=pd.cut(fdf["DiscountRate"], an.DISCOUNT_BINS, labels=an.DISCOUNT_LABELS))
         dband = dd_.groupby(["Band", "CustomerType"], observed=True).agg(UnitsPerLine=("Quantity", "mean")).reset_index()
         fig = px.bar(dband, x="Band", y="UnitsPerLine", color="CustomerType", barmode="group",
                      labels={"Band": "Discount off list price", "UnitsPerLine": "Units per line", "CustomerType": ""})
         fig.update_layout(height=340)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, theme=None, use_container_width=True)
 
 # =============================================================================
 # Supply chain
@@ -396,27 +397,27 @@ with tabs[3]:
                "ABC: cumulative revenue share (A ≤ 80%, B ≤ 95%, C remainder). "
                "XYZ: coefficient of variation of weekly demand (X ≤ 0.5, Y ≤ 1.0, Z > 1.0).")
     c1, c2 = st.columns(2)
-    with c1, st.container(border=True):
+    with c1, ui.card():
         ui.card_title("Number of SKUs")
         mat = prod.pivot_table(index="ABC", columns="XYZ", values="StockCode", aggfunc="count", fill_value=0, observed=True)
         mat = mat.reindex(index=["A", "B", "C"], columns=["X", "Y", "Z"], fill_value=0)
         fig = px.imshow(mat, text_auto=",.0f", color_continuous_scale=ui.SEQ, labels=dict(color="SKUs", x="", y=""))
         fig.update_layout(height=320, margin=dict(t=10), coloraxis_showscale=False)
-        st.plotly_chart(fig, use_container_width=True)
-    with c2, st.container(border=True):
+        st.plotly_chart(fig, theme=None, use_container_width=True)
+    with c2, ui.card():
         ui.card_title("Share of revenue")
         rv = prod.pivot_table(index="ABC", columns="XYZ", values="Revenue", aggfunc="sum", fill_value=0, observed=True)
         rv = rv.reindex(index=["A", "B", "C"], columns=["X", "Y", "Z"], fill_value=0) / prod["Revenue"].sum()
         fig = px.imshow(rv, text_auto=".1%", color_continuous_scale=ui.SEQ, labels=dict(color="Share", x="", y=""))
         fig.update_layout(height=320, margin=dict(t=10), coloraxis_showscale=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, theme=None, use_container_width=True)
 
     @st.fragment
     def inventory_simulator() -> None:
         ui.section("Inventory policy simulator",
                    "Safety stock = z·σ·√(L+R); reorder point = μ·L + SS; EOQ = √(2DS/hC). Adjust the parameters to "
                    "see the impact on stock levels.")
-        with st.container(border=True):
+        with ui.card():
             c = st.columns(5)
             service = c[0].slider("Service level", 0.80, 0.99, 0.95, 0.01)
             lead = c[1].slider("Lead time (weeks)", 0.5, 8.0, 2.0, 0.5)
@@ -450,7 +451,7 @@ with tabs[3]:
     c1, c2 = st.columns(2)
     with c1:
         ui.section("Weekly unit demand", "Actual units with 4-week moving average.")
-        with st.container(border=True):
+        with ui.card():
             wk = an.weekly_series(fdf, "Quantity").rename("Units").to_frame()
             wk["4-week average"] = wk["Units"].rolling(4).mean()
             fig = go.Figure()
@@ -458,10 +459,10 @@ with tabs[3]:
             fig.add_scatter(x=wk.index, y=wk["4-week average"], name="4-week average", mode="lines",
                             line=dict(color=ui.PINK, width=2.5))
             fig.update_layout(height=320, bargap=0.15)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
     with c2:
         ui.section("Regional demand profile", "Order count vs. drop size for the 15 largest cities.")
-        with st.container(border=True):
+        with ui.card():
             reg = fdf.groupby("City", observed=True).agg(Units=("Quantity", "sum"), Customers=("CustomerID", "nunique"),
                                                          Orders=("InvoiceNo", "nunique")).reset_index()
             reg = reg.nlargest(15, "Units")
@@ -471,7 +472,7 @@ with tabs[3]:
             fig.update_traces(textposition="top center", marker=dict(color=ui.PRIMARY, opacity=0.6),
                               textfont=dict(size=10, color=ui.MUTED))
             fig.update_layout(height=320)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
 
 # =============================================================================
 # Forecast
@@ -482,7 +483,7 @@ with tabs[4]:
         ui.section("Demand and revenue forecast",
                    "Three models are back-tested on the last 8 weeks. The model with the lowest MAPE is refitted on the "
                    "full history; the shaded band is an approximate 80% interval.")
-        with st.container(border=True):
+        with ui.card():
             c = st.columns(4)
             target = c[0].selectbox("Target", ["Net revenue", "Units"])
             level = c[1].selectbox("Level", ["Total", "Category", "City"])
@@ -502,7 +503,7 @@ with tabs[4]:
             st.info("Not enough weekly history for a reliable forecast. Widen the period or the selection.")
         else:
             fc = an.run_forecast(ser, horizon)
-            with st.container(border=True):
+            with ui.card():
                 fig = go.Figure()
                 fig.add_scatter(x=np.concatenate([fc["future"], fc["future"][::-1]]),
                                 y=np.concatenate([fc["upper"], fc["lower"][::-1]]), fill="toself", mode="lines",
@@ -519,7 +520,7 @@ with tabs[4]:
                 fig.update_layout(height=430, hovermode="x unified",
                                   legend=dict(orientation="h", y=-0.18, yanchor="top"),
                                   yaxis=MONEY if col == "Revenue" else {})
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, theme=None, use_container_width=True)
 
             nxt, last4 = fc["forecast"][:4].sum(), ser.values[-4:].sum()
             best_row = fc["scores"].iloc[0]
@@ -557,7 +558,7 @@ with tabs[5]:
     tags = {"info": "Finding", "good": "Opportunity", "warn": "Risk"}
     cols = st.columns(3)
     for col_, (dept, items) in zip(cols, ins.items()):
-        with col_, st.container(border=True):
+        with col_, ui.card():
             ui.card_title(dept)
             ui.insight_list(items, tags)
 
@@ -596,7 +597,7 @@ def render_answer(res: dict, idx: int) -> None:
     st.markdown(f'<div class="msg-bot">{ui.md_bold_to_html(res["text"]).replace(chr(10), "<br>")}</div>',
                 unsafe_allow_html=True)
     if res.get("fig") is not None:
-        st.plotly_chart(ui.dark_fig(res["fig"]), use_container_width=True, key=f"chatfig{idx}",
+        st.plotly_chart(ui.dark_fig(res["fig"]), theme=None, use_container_width=True, key=f"chatfig{idx}",
                         config={"displayModeBar": False})
     if res.get("df") is not None and len(res["df"]):
         st.markdown(ui.dark_table(res["df"]), unsafe_allow_html=True)
@@ -676,21 +677,21 @@ with tabs[6]:
     c1, c2 = st.columns(2)
     with c1:
         ui.section("Missing values in raw data")
-        with st.container(border=True):
+        with ui.card():
             miss = pd.Series(quality["missing"]).rename("Missing").reset_index().rename(columns={"index": "Column"})
             miss = miss[miss["Missing"] > 0]
             fig = px.bar(miss, x="Column", y="Missing", text_auto=",.0f")
             fig.update_traces(marker_color=ui.ACCENT)
             fig.update_layout(height=300, xaxis_title=None)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
     with c2:
         ui.section("Discount rate distribution", "Sample of up to 100,000 lines.")
-        with st.container(border=True):
+        with ui.card():
             fig = px.histogram(fdf.sample(min(len(fdf), 100_000), random_state=1), x="DiscountRate", nbins=60)
             fig.update_traces(marker_color=ui.PRIMARY)
             fig.update_layout(height=300, xaxis_tickformat=".0%", xaxis_title="Discount off list price",
                               yaxis_title="Lines")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, theme=None, use_container_width=True)
 
     ui.section("Clean data preview")
     st.dataframe(fdf.head(200), use_container_width=True, hide_index=True)

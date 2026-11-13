@@ -89,8 +89,8 @@ h1, h2, h3, h4 {{ color: {INK}; }}
 .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {{ display: none; }}
 
 /* ---------- cards ---------- */
-[data-testid="stVerticalBlockBorderWrapper"] {{ background: {CARD}; border: none !important; border-radius: 24px;
-                                               padding: 6px 8px; box-shadow: 0 1px 2px rgba(20,22,31,.04); }}
+[class*="st-key-card_"] {{ background: {CARD}; border-radius: 24px; padding: 16px 18px;
+                         box-shadow: 0 1px 2px rgba(20,22,31,.04); }}
 .sec {{ margin: 26px 0 10px 2px; }}
 .sec h3 {{ font-size: 17px; font-weight: 600; margin: 0; color: {INK}; }}
 .sec p {{ font-size: 12.5px; color: {MUTED}; margin: 2px 0 0 0; }}
@@ -201,6 +201,19 @@ h1, h2, h3, h4 {{ color: {INK}; }}
 
 def inject_css() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+_CARD_COUNTER = [0]
+
+
+def reset_cards() -> None:
+    _CARD_COUNTER[0] = 0
+
+
+def card():
+    """A rounded off-white card container (styled through its generated CSS class)."""
+    _CARD_COUNTER[0] += 1
+    return st.container(key=f"card_{_CARD_COUNTER[0]}")
 
 
 def esc(x) -> str:
