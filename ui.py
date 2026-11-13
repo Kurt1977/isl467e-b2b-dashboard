@@ -70,6 +70,11 @@ html, body, .stApp, .stApp p, .stApp label, .stApp input, .stApp textarea, .stAp
 .block-container {{ padding-top: 2.6rem; padding-bottom: 3rem; max-width: 1480px; }}
 h1, h2, h3, h4 {{ color: {INK}; }}
 
+/* Plotly: Streamlit's frontend forces paper colour & font from the app theme, so override in CSS */
+.stApp .js-plotly-plot .svg-container > .main-svg:first-child {{ background: {CARD} !important; }}
+[data-testid="stSidebar"] .js-plotly-plot .svg-container > .main-svg:first-child {{ background: {INK} !important; }}
+.js-plotly-plot text {{ font-family: 'Poppins', 'Segoe UI', Helvetica, Arial, sans-serif !important; }}
+
 /* ---------- header ---------- */
 .hdr-title {{ font-size: 34px; font-weight: 600; color: {INK}; letter-spacing: -0.02em; line-height: 1.1; }}
 .hdr-sub {{ font-size: 13px; color: {MUTED}; margin-top: 4px; }}
