@@ -598,67 +598,110 @@ if "chat" not in st.session_state:
     st.session_state.chat = []
 
 
-def render_answer(res: dict, idx: int) -> None:
-    st.markdown(f'<div class="msg-bot">{ui.md_bold_to_html(res["text"]).replace(chr(10), "<br>")}</div>',
-                unsafe_allow_html=True)
-    if res.get("fig") is not None:
-        ui.chart(ui.dark_fig(res["fig"]), use_container_width=True, key=f"chatfig{idx}",
-                        config={"displayModeBar": False})
-    if res.get("df") is not None and len(res["df"]):
-        st.markdown(ui.dark_table(res["df"]), unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        c1.download_button("CSV", res["df"].to_csv(index=False).encode("utf-8-sig"),
-                           file_name=f"assistant_result_{idx}.csv", mime="text/csv", key=f"csv{idx}",
-                           use_container_width=True)
-        c2.download_button("Excel", to_excel({"Result": res["df"]}), file_name=f"assistant_result_{idx}.xlsx",
-                           key=f"xlsx{idx}", use_container_width=True,
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+def bot_bubble(html_text: str) -> str:
+    return (f'<div class="msg-row bot"><div class="avatar bot">{ui.ASSISTANT_ICON_SM}</div>'
+            f'<div class="msg-col"><div class="msg-meta">Data Assistant</div>'
+            f'<div class="msg-bot">{html_text}</div></div></div>')
+
+
+def render_answer(turn: dict, idx: int) -> None:
+    res = turn["res"]
     sp = res.get("spec") or {}
-    if sp:
-        flt = asst.describe_filters(sp.get("filters", {}), "en")
-        st.markdown(f'<div class="msg-spec">intent: {sp.get("intent")} · measure: {sp.get("metric")} · '
-                    f'by: {sp.get("dim")}{" · " + ui.esc(flt) if flt else ""}</div>', unsafe_allow_html=True)
+    steps = "".join(f'<span class="step"><span class="tick">✓</span>{ui.esc(s_)}</span>'
+                    for s_ in turn.get("steps", []))
+    if steps:
+        st.markdown(f'<div class="trace">{steps}</div>', unsafe_allow_html=True)
+    body = ui.md_bold_to_html(res["text"]).replace(chr(10), "<br>")
+    slot = st.empty()
+    if turn.get("animate"):
+        import time
+        words = body.split(" ")
+        for i in range(1, len(words) + 1, 3):  # word-by-word "typing" effect
+            slot.markdown(bot_bubble(" ".join(words[:i]) + '<span class="caret"></span>'), unsafe_allow_html=True)
+            time.sleep(0.03)
+        turn["animate"] = False
+    slot.markdown(bot_bubble(body), unsafe_allow_html=True)
+
+    if res.get("fig") is not None or (res.get("df") is not None and len(res["df"])):
+        with st.container(key=f"answer_card_{idx}"):
+            if res.get("fig") is not None:
+                ui.chart(ui.dark_fig(res["fig"]), use_container_width=True, key=f"chatfig{idx}")
+            if res.get("df") is not None and len(res["df"]):
+                st.markdown(ui.dark_table(res["df"]), unsafe_allow_html=True)
+                c1, c2, _ = st.columns([1, 1, 1.4])
+                c1.download_button("CSV", res["df"].to_csv(index=False).encode("utf-8-sig"),
+                                   file_name=f"assistant_result_{idx}.csv", mime="text/csv", key=f"csv{idx}",
+                                   use_container_width=True)
+                c2.download_button("Excel", to_excel({"Result": res["df"]}), file_name=f"assistant_result_{idx}.xlsx",
+                                   key=f"xlsx{idx}", use_container_width=True,
+                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+def ask(question: str) -> None:
+    spec = asst.llm_parse(question, vocab, api_key, st.secrets.get("ANTHROPIC_MODEL", "claude-haiku-5-5")) \
+        if api_key else None
+    spec = spec or asst.parse_question(question, vocab)
+    try:
+        result = asst.execute(spec, fdf, {"rfm": rfm, "rules": rules, "prod": prod})
+        rows = len(asst.apply_filters(fdf, spec.get("filters", {})))
+    except Exception as exc:  # keep the app alive on unexpected questions
+        result = {"text": f"I could not answer that ({type(exc).__name__}). Try naming a measure and a "
+                          "dimension, e.g. 'revenue by city'.", "df": None, "fig": None, "spec": spec}
+        rows = len(fdf)
+    st.session_state.chat.append({"q": question, "res": result, "animate": True,
+                                  "steps": asst.reasoning_steps(spec, rows),
+                                  "follow": asst.follow_ups(spec, result),
+                                  "time": pd.Timestamp.now(tz="Europe/Istanbul").strftime("%H:%M")})
 
 
 @st.fragment
 def assistant_panel() -> None:
-    mode = "Claude-assisted" if api_key else "Built-in query engine"
-    st.markdown(f'<div class="brand"><div class="brand-mark">{ui.ASSISTANT_ICON}</div><div><div class="brand-name">Data Assistant</div>'
-                f'<div class="brand-sub">Ask about the data · TR / EN · {mode}</div></div></div>',
-                unsafe_allow_html=True)
-    with st.form("ask", clear_on_submit=True, border=False):
-        c1, c2 = st.columns([4, 1.3])
-        typed = c1.text_input("Question", placeholder="Ask anything about the data…", label_visibility="collapsed")
-        asked = c2.form_submit_button("Ask", use_container_width=True)
-    st.markdown('<div class="side-label">Try</div>', unsafe_allow_html=True)
-    clicked = None
-    for i, s_ in enumerate(asst.SUGGESTIONS[:6]):
-        if st.button(s_, key=f"sug{i}", use_container_width=True):
-            clicked = s_
-    question = (typed if asked and typed.strip() else None) or clicked
-    if question:
-        spec = asst.llm_parse(question, vocab, api_key, st.secrets.get("ANTHROPIC_MODEL", "claude-haiku-5-5")) \
-            if api_key else None
-        spec = spec or asst.parse_question(question, vocab)
-        try:
-            result = asst.execute(spec, fdf, {"rfm": rfm, "rules": rules, "prod": prod})
-        except Exception as exc:  # keep the app alive on unexpected questions
-            result = {"text": f"I could not answer that ({type(exc).__name__}). Try naming a measure and a "
-                              "dimension, e.g. 'revenue by city'.", "df": None, "fig": None, "spec": spec}
-        st.session_state.chat.append({"q": question, "res": result})
+    mode = "Claude-assisted" if api_key else "Built-in engine"
+    st.markdown(f'<div class="brand"><div class="brand-mark">{ui.ASSISTANT_ICON}</div><div><div class="brand-name">'
+                f'Data Assistant <span class="live-dot"></span></div>'
+                f'<div class="brand-sub">Online · TR / EN · {mode}</div></div></div>', unsafe_allow_html=True)
 
-    if st.session_state.chat:
-        st.markdown('<div class="side-label">Conversation</div>', unsafe_allow_html=True)
-        for i in range(len(st.session_state.chat) - 1, -1, -1):  # newest first
-            turn = st.session_state.chat[i]
-            st.markdown(f'<div class="msg-user">{ui.esc(turn["q"])}</div>', unsafe_allow_html=True)
-            render_answer(turn["res"], i)
-        if st.button("Clear conversation", key="clear_chat"):
-            st.session_state.chat = []
-            st.rerun(scope="fragment")
-    st.markdown(f'<div class="side-label" style="margin-top:22px">Scope</div>'
-                f'<div class="brand-sub">Answers use the active filters · {len(fdf):,} lines · '
-                f'source data {quality["raw_rows"]:,} raw / {quality["clean_rows"]:,} clean lines</div>',
+    pending = st.session_state.pop("_pending_q", None)
+    if pending:
+        ask(pending)
+
+    chat = st.session_state.chat
+    if not chat:
+        st.markdown(bot_bubble("Merhaba! Ben veri asistanınım. Satış, müşteri, ürün ve stok verileri hakkında "
+                               "Türkçe ya da İngilizce soru sorabilirsin; cevabı tablo, grafik ve indirilebilir dosya "
+                               "olarak hazırlarım.<br><span class='muted'>Başlamak için bir öneri seç ya da aşağıya yaz.</span>"),
+                    unsafe_allow_html=True)
+        chips = asst.SUGGESTIONS[:6]
+        st.markdown('<div class="side-label">Suggested</div>', unsafe_allow_html=True)
+        for i, s_ in enumerate(chips):
+            if st.button(s_, key=f"sug{i}", use_container_width=True):
+                st.session_state["_pending_q"] = s_
+                st.rerun(scope="fragment")
+    for i, turn in enumerate(chat):
+        st.markdown(f'<div class="msg-row user"><div class="msg-col"><div class="msg-meta right">You · '
+                    f'{turn.get("time", "")}</div><div class="msg-user">{ui.esc(turn["q"])}</div></div>'
+                    f'<div class="avatar user">{ui.USER_ICON}</div></div>', unsafe_allow_html=True)
+        render_answer(turn, i)
+        if i == len(chat) - 1 and turn.get("follow"):
+            st.markdown('<div class="side-label">Follow up</div>', unsafe_allow_html=True)
+            for j, f_ in enumerate(turn["follow"]):
+                if st.button(f_, key=f"fu{i}_{j}", use_container_width=True):
+                    st.session_state["_pending_q"] = f_
+                    st.rerun(scope="fragment")
+
+    with st.form("ask", clear_on_submit=True, border=False):
+        c1, c2 = st.columns([4, 1.2])
+        typed = c1.text_input("Question", placeholder="Message Data Assistant…", label_visibility="collapsed")
+        asked = c2.form_submit_button("Send", use_container_width=True)
+    if asked and typed.strip():
+        st.session_state["_pending_q"] = typed.strip()
+        st.rerun(scope="fragment")
+
+    c1, c2 = st.columns([1, 1])
+    if chat and c1.button("New chat", key="clear_chat", use_container_width=True):
+        st.session_state.chat = []
+        st.rerun(scope="fragment")
+    st.markdown(f'<div class="scope">Answers use the active filters · {len(fdf):,} lines in scope</div>',
                 unsafe_allow_html=True)
 
 

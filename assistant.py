@@ -587,3 +587,54 @@ def build_vocab(d: pd.DataFrame) -> dict:
     cities = d.groupby("City", observed=True)["Revenue"].sum().sort_values(ascending=False).index.astype(str).tolist()
     return {"categories": cats, "cities": [c for c in cities if c != "UNKNOWN"],
             "doctypes": sorted(d["DocType"].astype(str).unique().tolist())}
+
+
+# ----------------------------------------------------------------------------- conversation helpers
+def follow_ups(spec: dict, result: dict) -> list[str]:
+    """Suggest three natural next questions that the parser understands."""
+    tr = spec.get("lang", "en") == "tr"
+    intent, dim, metric = spec.get("intent"), spec.get("dim"), spec.get("metric") or "revenue"
+    df_ = result.get("df")
+    if intent == "query" and dim in ("city", "category", "customer") and df_ is not None and len(df_):
+        top = str(df_.iloc[0, 0])
+        dlab = DIMS[dim][2 if tr else 1].lower()
+        return ([f"{top} aylık ciro trendi", f"{dlab} bazında ciro payı pasta grafik", f"{dlab} bazında satılan adet"]
+                if tr else
+                [f"Monthly revenue trend for {top}", f"Revenue share by {dlab} as a pie chart", f"Units sold by {dlab}"])
+    if intent == "query" and dim in ("month", "week", "quarter", "weekday"):
+        return (["Önümüzdeki 8 haftanın satış tahmini", "Haftanın günlerine göre sipariş sayısı",
+                 "En çok ciro getiren 10 şehir"] if tr else
+                ["Forecast the next 8 weeks", "Orders by weekday", "Top 10 cities by revenue"])
+    if intent == "query":
+        return (["Aylık ciro trendi", "En çok satan 10 kitap", "Müşteri tipine göre ortalama indirim"] if tr else
+                ["Monthly revenue trend", "Top 10 best-selling books", "Average discount by customer type"])
+    if intent == "forecast":
+        return (["Kategori bazında ciro", "Churn riski olan en değerli müşteriler", "Aylık sipariş sayısı"] if tr else
+                ["Revenue by category", "Most valuable customers at churn risk", "Monthly orders"])
+    if intent in ("segments", "crosssell", "inventory"):
+        return (["Hangi kategoriler birlikte satılıyor?", "ABC stok analizi", "Genel özet"] if tr else
+                ["Which categories sell together?", "ABC inventory analysis", "Give me a summary"])
+    return (["Genel özet", "En çok ciro getiren 10 kategori", "Önümüzdeki 8 haftanın satış tahmini"] if tr else
+            ["Give me a summary", "Top 10 categories by revenue", "Forecast the next 8 weeks"])
+
+
+def reasoning_steps(spec: dict, rows_in_scope: int) -> list[str]:
+    """Short, human-readable trace of how the question was interpreted."""
+    tr = spec.get("lang", "en") == "tr"
+    intent, metric, dim = spec.get("intent"), spec.get("metric"), spec.get("dim")
+    steps = []
+    if intent == "query" and metric:
+        m = METRICS[metric][1 if tr else 0]
+        d = DIMS[dim][2 if tr else 1] if dim else ("Toplam" if tr else "Total")
+        steps.append(f"{'Ölçü' if tr else 'Measure'}: {m} · {'Kırılım' if tr else 'By'}: {d}")
+    else:
+        names = {"forecast": ("Tahmin modeli", "Forecast model"), "segments": ("RFM segmentasyonu", "RFM segmentation"),
+                 "crosssell": ("Birliktelik kuralları", "Association rules"), "inventory": ("ABC–XYZ analizi", "ABC–XYZ analysis"),
+                 "insights": ("İçgörü üretimi", "Insight generation"), "summary": ("KPI özeti", "KPI summary"),
+                 "help": ("Yardım", "Help")}
+        steps.append(names.get(intent, (intent, intent))[0 if tr else 1])
+    flt = describe_filters(spec.get("filters", {}), spec.get("lang", "en"))
+    if flt:
+        steps.append(flt)
+    steps.append(f"{rows_in_scope:,} {'satır tarandı' if tr else 'rows scanned'}")
+    return steps

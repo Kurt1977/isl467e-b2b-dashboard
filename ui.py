@@ -206,11 +206,36 @@ h1, h2, h3, h4 {{ color: {INK}; }}
 [data-testid="stSidebar"] [data-testid="stFormSubmitButton"] button:hover {{ filter: brightness(1.06); }}
 [data-testid="stSidebar"] [data-testid="stFormSubmitButton"] button p {{ color: white !important; font-weight: 600; }}
 [data-testid="stSidebar"] .stDownloadButton button {{ background: #22253A; border: 1px solid #2C3048; font-size: 11.5px; }}
-.msg-user {{ background: {GRADIENT}; color: white !important; border-radius: 16px 16px 4px 16px; padding: 9px 13px;
-             font-size: 13px; margin: 14px 0 8px 40px; }}
-.msg-bot {{ background: #1E2133; border: 1px solid #2C3048; border-radius: 16px 16px 16px 4px; padding: 11px 13px;
-            font-size: 13px; line-height: 1.55; }}
-.msg-bot b {{ color: white; }}
+/* ---- conversation ---- */
+.live-dot {{ display:inline-block; width:8px; height:8px; border-radius:50%; background:#3DD68C; margin-left:6px;
+             box-shadow: 0 0 0 3px rgba(61,214,140,.18); vertical-align: middle; }}
+.msg-row {{ display:flex; gap: 10px; align-items:flex-start; margin: 14px 0 6px 0; animation: fadeUp .35s ease both; }}
+.msg-row.user {{ justify-content: flex-end; }}
+.msg-col {{ max-width: 82%; display:flex; flex-direction:column; }}
+.msg-row.bot .msg-col {{ max-width: 88%; }}
+.msg-meta {{ font-size: 10.5px; color: #7E8193 !important; margin: 0 0 4px 2px; }}
+.msg-meta.right {{ text-align: right; margin-right: 2px; }}
+.avatar {{ flex: 0 0 30px; width:30px; height:30px; border-radius: 10px; display:flex; align-items:center;
+           justify-content:center; margin-top: 16px; }}
+.avatar.bot {{ background: {GRADIENT}; box-shadow: 0 4px 12px rgba(226,85,138,.3); }}
+.avatar.user {{ background: #2A2E45; }}
+.msg-user {{ background: {GRADIENT}; color: white !important; border-radius: 16px 16px 4px 16px; padding: 10px 14px;
+             font-size: 13px; line-height: 1.5; box-shadow: 0 6px 16px rgba(226,85,138,.22); }}
+.msg-bot {{ background: #1E2133; border: 1px solid #2C3048; border-radius: 4px 16px 16px 16px; padding: 11px 14px;
+            font-size: 13px; line-height: 1.6; }}
+.msg-bot b {{ color: white; font-weight: 600; }}
+.msg-bot .muted {{ color: #8C90A6 !important; font-size: 12px; }}
+.caret {{ display:inline-block; width:7px; height:14px; background:{CORAL}; margin-left:3px; vertical-align:-2px;
+          border-radius:2px; animation: blink .8s steps(2) infinite; }}
+.trace {{ display:flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0 40px; }}
+.step {{ font-size: 10.5px; color: #A9ACBD !important; background: #191C2C; border: 1px solid #2A2E45;
+         border-radius: 999px; padding: 3px 9px; }}
+.step .tick {{ color: #3DD68C !important; margin-right: 5px; font-weight: 700; }}
+[class*="st-key-answer_card_"] {{ background: #1A1D2E; border: 1px solid #2A2E45; border-radius: 16px;
+                                   padding: 10px 12px 12px 12px; margin-left: 40px; }}
+.scope {{ font-size: 10.5px; color: #6F7286 !important; margin-top: 6px; }}
+@keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(6px); }} to {{ opacity: 1; transform: none; }} }}
+@keyframes blink {{ 50% {{ opacity: 0; }} }}
 .msg-spec {{ font-size: 10.5px; color: #7E8193 !important; margin-top: 6px; }}
 .dtable {{ width:100%; border-collapse: collapse; font-size: 11.5px; margin-top: 8px; }}
 .dtable th {{ text-align:left; color:#9A9DAA !important; font-weight:500; padding: 5px 6px; border-bottom: 1px solid #2C3048; }}
@@ -391,3 +416,8 @@ ASSISTANT_ICON = (
     'fill="white" fill-opacity=".85"/>'
     '<circle cx="18.5" cy="5.5" r="1.3" fill="white" fill-opacity=".7"/></svg>'
 )
+
+ASSISTANT_ICON_SM = ASSISTANT_ICON.replace('width="24" height="24"', 'width="16" height="16"')
+USER_ICON = ('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">'
+             '<circle cx="12" cy="8" r="4" fill="#C9CBD6"/>'
+             '<path d="M4 20c1.2-4 4.4-6 8-6s6.8 2 8 6" stroke="#C9CBD6" stroke-width="2" stroke-linecap="round"/></svg>')
