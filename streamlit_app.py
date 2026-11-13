@@ -177,9 +177,9 @@ with tabs[0]:
         colors[int(wd.values.argmax())] = ui.PINK
         fig = go.Figure()
         fig.update_layout(template=ui.TEMPLATE)
-        fig.add_bar(x=[d[0] for d in WEEKDAYS], y=wd.values, marker=dict(color=colors, cornerradius=12),
+        fig.add_bar(x=WEEKDAYS, y=wd.values, marker=dict(color=colors, cornerradius=12),
                     hovertext=WEEKDAYS, hovertemplate="%{hovertext}: ₺%{y:,.0f}<extra></extra>")
-        fig.add_scatter(x=[d[0] for d in WEEKDAYS], y=wd.values * 0.55, mode="lines", line=dict(color=ui.INK, width=1.6,
+        fig.add_scatter(x=WEEKDAYS, y=wd.values * 0.55, mode="lines", line=dict(color=ui.INK, width=1.6,
                         shape="spline"), hoverinfo="skip")
         fig.update_layout(height=270, showlegend=False, bargap=0.45, yaxis=dict(showticklabels=False, showgrid=False))
         ui.chart(fig, use_container_width=True, config={"displayModeBar": False})
