@@ -176,7 +176,8 @@ h1, h2, h3, h4 {{ color: {INK}; }}
 [data-testid="stSidebar"] * {{ color: #E8E9EE; }}
 [data-testid="stSidebarHeader"] {{ height: 0; padding: 0; }}
 .brand {{ display:flex; align-items:center; gap: 12px; margin: 4px 0 18px 0; }}
-.brand-mark {{ width: 40px; height: 40px; border-radius: 12px; background: {GRADIENT}; display:flex; align-items:center;
+.brand-mark {{ width: 42px; height: 42px; border-radius: 13px; background: {GRADIENT}; display:flex; align-items:center;
+               box-shadow: 0 6px 16px rgba(226,85,138,.35);
                justify-content:center; font-weight:700; color:white; font-size: 15px; }}
 .brand-name {{ font-size: 16px; font-weight: 600; color: white; }}
 .brand-sub {{ font-size: 11.5px; color: #9A9DAA !important; }}
@@ -185,10 +186,24 @@ h1, h2, h3, h4 {{ color: {INK}; }}
     text-align: left; justify-content: flex-start; font-size: 12px; padding: 8px 12px; min-height: 0; }}
 [data-testid="stSidebar"] .stButton button:hover {{ border-color: {CORAL}; }}
 [data-testid="stSidebar"] .stButton button p {{ font-size: 12px; color: #D9DAE2 !important; }}
-[data-testid="stSidebar"] [data-testid="stTextInput"] input {{ background: #22253A; border: 1px solid #2C3048;
-    border-radius: 14px; color: white; }}
-[data-testid="stSidebar"] [data-testid="stTextInput"] > div {{ background: transparent; border: none; }}
-[data-testid="stSidebar"] [data-testid="stFormSubmitButton"] button {{ background: {GRADIENT}; border: none; border-radius: 14px; }}
+/* question box: one unified dark field, no white corners */
+[data-testid="stSidebar"] [data-testid="stTextInput"] > div,
+[data-testid="stSidebar"] [data-testid="stTextInput"] [data-baseweb="input"],
+[data-testid="stSidebar"] [data-testid="stTextInput"] [data-baseweb="base-input"] {{
+    background: #1E2133 !important; border: none !important; border-radius: 14px !important; box-shadow: none !important; }}
+[data-testid="stSidebar"] [data-testid="stTextInput"] [data-baseweb="input"] {{
+    border: 1px solid #343852 !important; height: 46px; transition: border-color .15s, box-shadow .15s; }}
+[data-testid="stSidebar"] [data-testid="stTextInput"] [data-baseweb="input"]:focus-within {{
+    border-color: {CORAL} !important; box-shadow: 0 0 0 3px rgba(239,123,92,.18) !important; }}
+[data-testid="stSidebar"] [data-testid="stTextInput"] input {{
+    background: transparent !important; color: #F3F4F8 !important; font-size: 13px; padding-left: 14px;
+    caret-color: {CORAL}; }}
+[data-testid="stSidebar"] [data-testid="stTextInput"] input::placeholder {{ color: #8C90A6 !important; opacity: 1; }}
+[data-testid="stSidebar"] [data-testid="InputInstructions"] {{ display: none; }}
+[data-testid="stSidebar"] [data-testid="stForm"] {{ border: none; padding: 0; }}
+[data-testid="stSidebar"] [data-testid="stFormSubmitButton"] button {{ background: {GRADIENT}; border: none;
+    border-radius: 14px; height: 46px; box-shadow: 0 6px 18px rgba(226,85,138,.28); }}
+[data-testid="stSidebar"] [data-testid="stFormSubmitButton"] button:hover {{ filter: brightness(1.06); }}
 [data-testid="stSidebar"] [data-testid="stFormSubmitButton"] button p {{ color: white !important; font-weight: 600; }}
 [data-testid="stSidebar"] .stDownloadButton button {{ background: #22253A; border: 1px solid #2C3048; font-size: 11.5px; }}
 .msg-user {{ background: {GRADIENT}; color: white !important; border-radius: 16px 16px 4px 16px; padding: 9px 13px;
@@ -367,3 +382,12 @@ def chart(fig, **kwargs):
         fig.update_layout(font=dict(family="Poppins, 'Segoe UI', Helvetica, Arial, sans-serif", color=TEXT, size=12))
     kwargs.setdefault("config", {"displayModeBar": False})
     return st.plotly_chart(fig, theme=None, **kwargs)
+
+
+ASSISTANT_ICON = (
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">'
+    '<path d="M10 3.5c.4 3.6 2.4 5.6 6 6-3.6.4-5.6 2.4-6 6-.4-3.6-2.4-5.6-6-6 3.6-.4 5.6-2.4 6-6Z" fill="white"/>'
+    '<path d="M18 13.5c.2 1.8 1.2 2.8 3 3-1.8.2-2.8 1.2-3 3-.2-1.8-1.2-2.8-3-3 1.8-.2 2.8-1.2 3-3Z" '
+    'fill="white" fill-opacity=".85"/>'
+    '<circle cx="18.5" cy="5.5" r="1.3" fill="white" fill-opacity=".7"/></svg>'
+)

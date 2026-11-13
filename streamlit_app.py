@@ -623,12 +623,12 @@ def render_answer(res: dict, idx: int) -> None:
 @st.fragment
 def assistant_panel() -> None:
     mode = "Claude-assisted" if api_key else "Built-in query engine"
-    st.markdown(f'<div class="brand"><div class="brand-mark">AI</div><div><div class="brand-name">Data Assistant</div>'
+    st.markdown(f'<div class="brand"><div class="brand-mark">{ui.ASSISTANT_ICON}</div><div><div class="brand-name">Data Assistant</div>'
                 f'<div class="brand-sub">Ask about the data · TR / EN · {mode}</div></div></div>',
                 unsafe_allow_html=True)
     with st.form("ask", clear_on_submit=True, border=False):
         c1, c2 = st.columns([4, 1.3])
-        typed = c1.text_input("Question", placeholder="Ask a question…", label_visibility="collapsed")
+        typed = c1.text_input("Question", placeholder="Ask anything about the data…", label_visibility="collapsed")
         asked = c2.form_submit_button("Ask", use_container_width=True)
     st.markdown('<div class="side-label">Try</div>', unsafe_allow_html=True)
     clicked = None
