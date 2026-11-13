@@ -222,26 +222,30 @@ with tabs[1]:
             fig.update_layout(height=max(340, 30 * show_n), margin=dict(t=10))
             st.plotly_chart(fig, use_container_width=True)
 
-    ui.section("Custom breakdown", "Choose a dimension and a measure.")
-    with st.container(border=True):
-        c1, c2, c3 = st.columns([2, 2, 1])
-        dims = {"Month": "Month", "Quarter": "Quarter", "City": "City", "Category": "Category",
-                "Document type": "DocType", "Customer type": "CustomerType"}
-        metrics = {"Net revenue": ("Revenue", "sum"), "Units": ("Quantity", "sum"), "Orders": ("InvoiceNo", "nunique"),
-                   "Customers": ("CustomerID", "nunique"), "Average discount": ("DiscountRate", "mean")}
-        g = c1.selectbox("Dimension", list(dims), index=2)
-        mname = c2.selectbox("Measure", list(metrics), index=0)
-        ctype = c3.radio("Chart", ["Bar", "Line"], horizontal=True)
-        col, agg = metrics[mname]
-        dyn = fdf.groupby(dims[g], observed=True)[col].agg(agg).reset_index()
-        dyn = dyn.sort_values(dims[g]) if g in ("Month", "Quarter") else dyn.nlargest(show_n, col)
-        if g != "Month":
-            dyn[dims[g]] = dyn[dims[g]].astype(str)
-        fig = (px.bar(dyn, x=dims[g], y=col, text_auto=".3s") if ctype == "Bar"
-               else px.line(dyn, x=dims[g], y=col, markers=True))
-        fig.update_traces(marker_color=ui.PRIMARY) if ctype == "Bar" else fig.update_traces(line_color=ui.PRIMARY)
-        fig.update_layout(height=360, yaxis_title=mname, xaxis_title=None)
-        st.plotly_chart(fig, use_container_width=True)
+    @st.fragment
+    def custom_breakdown() -> None:
+        ui.section("Custom breakdown", "Choose a dimension and a measure.")
+        with st.container(border=True):
+            c1, c2, c3 = st.columns([2, 2, 1])
+            dims = {"Month": "Month", "Quarter": "Quarter", "City": "City", "Category": "Category",
+                    "Document type": "DocType", "Customer type": "CustomerType"}
+            metrics = {"Net revenue": ("Revenue", "sum"), "Units": ("Quantity", "sum"), "Orders": ("InvoiceNo", "nunique"),
+                       "Customers": ("CustomerID", "nunique"), "Average discount": ("DiscountRate", "mean")}
+            g = c1.selectbox("Dimension", list(dims), index=2)
+            mname = c2.selectbox("Measure", list(metrics), index=0)
+            ctype = c3.radio("Chart", ["Bar", "Line"], horizontal=True)
+            col, agg = metrics[mname]
+            dyn = fdf.groupby(dims[g], observed=True)[col].agg(agg).reset_index()
+            dyn = dyn.sort_values(dims[g]) if g in ("Month", "Quarter") else dyn.nlargest(show_n, col)
+            if g != "Month":
+                dyn[dims[g]] = dyn[dims[g]].astype(str)
+            fig = (px.bar(dyn, x=dims[g], y=col, text_auto=".3s") if ctype == "Bar"
+                   else px.line(dyn, x=dims[g], y=col, markers=True))
+            fig.update_traces(marker_color=ui.PRIMARY) if ctype == "Bar" else fig.update_traces(line_color=ui.PRIMARY)
+            fig.update_layout(height=360, yaxis_title=mname, xaxis_title=None)
+            st.plotly_chart(fig, use_container_width=True)
+
+    custom_breakdown()
 
 # =============================================================================
 # Customers & Marketing
@@ -354,37 +358,41 @@ with tabs[3]:
         fig.update_layout(height=320, margin=dict(t=10), coloraxis_showscale=False)
         st.plotly_chart(fig, use_container_width=True)
 
-    ui.section("Inventory policy simulator",
-               "Safety stock = z·σ·√(L+R); reorder point = μ·L + SS; EOQ = √(2DS/hC). Adjust the parameters to "
-               "see the impact on stock levels.")
-    with st.container(border=True):
-        c = st.columns(5)
-        service = c[0].slider("Service level", 0.80, 0.99, 0.95, 0.01)
-        lead = c[1].slider("Lead time (weeks)", 0.5, 8.0, 2.0, 0.5)
-        review = c[2].slider("Review period (weeks)", 0.0, 4.0, 1.0, 0.5)
-        ocost = c[3].number_input("Order cost (₺ per order)", 10.0, 5000.0, 250.0, 10.0)
-        hrate = c[4].slider("Holding cost (% per year)", 0.05, 0.50, 0.20, 0.01)
-        classes = sorted(prod["Class"].unique())
-        cls = st.multiselect("Classes included", classes, default=[x for x in ["AX", "AY", "AZ"] if x in classes])
-    pol = an.inventory_policy(prod[prod["Class"].isin(cls)] if cls else prod, service, lead, review, ocost, hrate)
-    unit_val = (pol["Revenue"] / pol["Units"]).fillna(0)
-    ui.kpi_row([
-        ui.kpi("SKUs in policy", f"{len(pol):,}", foot="selected classes"),
-        ui.kpi("Total safety stock", f"{pol['SafetyStock'].sum():,.0f} units", foot=f"at {service:.0%} service level"),
-        ui.kpi("Safety stock value", an.fmt_money((pol["SafetyStock"] * unit_val).sum()), foot="at average net price"),
-        ui.kpi("Average reorder point", f"{pol['ReorderPoint'].mean():,.0f} units", foot=f"lead time {lead:g} weeks"),
-    ])
-    st.write("")
-    st.dataframe(pol.nlargest(max(show_n, 15), "Revenue")[
-                     ["Product", "Category", "Class", "WeeklyMean", "WeeklyStd", "SafetyStock", "ReorderPoint", "EOQ",
-                      "OrdersPerYear"]],
-                 hide_index=True, use_container_width=True,
-                 column_config={"WeeklyMean": st.column_config.NumberColumn("Avg weekly demand", format="%.1f"),
-                                "WeeklyStd": st.column_config.NumberColumn("Demand σ", format="%.1f"),
-                                "SafetyStock": st.column_config.NumberColumn("Safety stock", format="%.0f"),
-                                "ReorderPoint": st.column_config.NumberColumn("Reorder point", format="%.0f"),
-                                "EOQ": st.column_config.NumberColumn("EOQ", format="%.0f"),
-                                "OrdersPerYear": st.column_config.NumberColumn("Orders / year", format="%.1f")})
+    @st.fragment
+    def inventory_simulator() -> None:
+        ui.section("Inventory policy simulator",
+                   "Safety stock = z·σ·√(L+R); reorder point = μ·L + SS; EOQ = √(2DS/hC). Adjust the parameters to "
+                   "see the impact on stock levels.")
+        with st.container(border=True):
+            c = st.columns(5)
+            service = c[0].slider("Service level", 0.80, 0.99, 0.95, 0.01)
+            lead = c[1].slider("Lead time (weeks)", 0.5, 8.0, 2.0, 0.5)
+            review = c[2].slider("Review period (weeks)", 0.0, 4.0, 1.0, 0.5)
+            ocost = c[3].number_input("Order cost (₺ per order)", 10.0, 5000.0, 250.0, 10.0)
+            hrate = c[4].slider("Holding cost (% per year)", 0.05, 0.50, 0.20, 0.01)
+            classes = sorted(prod["Class"].unique())
+            cls = st.multiselect("Classes included", classes, default=[x for x in ["AX", "AY", "AZ"] if x in classes])
+        pol = an.inventory_policy(prod[prod["Class"].isin(cls)] if cls else prod, service, lead, review, ocost, hrate)
+        unit_val = (pol["Revenue"] / pol["Units"]).fillna(0)
+        ui.kpi_row([
+            ui.kpi("SKUs in policy", f"{len(pol):,}", foot="selected classes"),
+            ui.kpi("Total safety stock", f"{pol['SafetyStock'].sum():,.0f} units", foot=f"at {service:.0%} service level"),
+            ui.kpi("Safety stock value", an.fmt_money((pol["SafetyStock"] * unit_val).sum()), foot="at average net price"),
+            ui.kpi("Average reorder point", f"{pol['ReorderPoint'].mean():,.0f} units", foot=f"lead time {lead:g} weeks"),
+        ])
+        st.write("")
+        st.dataframe(pol.nlargest(max(show_n, 15), "Revenue")[
+                         ["Product", "Category", "Class", "WeeklyMean", "WeeklyStd", "SafetyStock", "ReorderPoint", "EOQ",
+                          "OrdersPerYear"]],
+                     hide_index=True, use_container_width=True,
+                     column_config={"WeeklyMean": st.column_config.NumberColumn("Avg weekly demand", format="%.1f"),
+                                    "WeeklyStd": st.column_config.NumberColumn("Demand σ", format="%.1f"),
+                                    "SafetyStock": st.column_config.NumberColumn("Safety stock", format="%.0f"),
+                                    "ReorderPoint": st.column_config.NumberColumn("Reorder point", format="%.0f"),
+                                    "EOQ": st.column_config.NumberColumn("EOQ", format="%.0f"),
+                                    "OrdersPerYear": st.column_config.NumberColumn("Orders / year", format="%.1f")})
+
+    inventory_simulator()
 
     c1, c2 = st.columns(2)
     with c1:
@@ -416,70 +424,74 @@ with tabs[3]:
 # Forecast
 # =============================================================================
 with tabs[4]:
-    ui.section("Demand and revenue forecast",
-               "Three models are back-tested on the last 8 weeks. The model with the lowest MAPE is refitted on the "
-               "full history; the shaded band is an approximate 80% interval.")
-    with st.container(border=True):
-        c = st.columns(4)
-        target = c[0].selectbox("Target", ["Net revenue", "Units"])
-        level = c[1].selectbox("Level", ["Total", "Category", "City"])
-        choice = None
-        if level == "Category":
-            choice = c[2].selectbox("Category", cat_order[:40] if not sel_cat else sel_cat)
-        elif level == "City":
-            choice = c[2].selectbox("City", city_order[:30] if not sel_city else sel_city)
-        else:
-            c[2].selectbox("Scope", ["All filtered data"], disabled=True)
-        horizon = c[3].slider("Horizon (weeks)", 4, 16, 8)
-    col = "Revenue" if target == "Net revenue" else "Quantity"
-    base = fdf if level == "Total" else fdf[fdf[level] == choice]
-    ser = an.weekly_series(base, col)
-
-    if len(ser) < 20:
-        st.info("Not enough weekly history for a reliable forecast. Widen the period or the selection.")
-    else:
-        fc = an.run_forecast(ser, horizon)
+    @st.fragment
+    def forecast_panel() -> None:
+        ui.section("Demand and revenue forecast",
+                   "Three models are back-tested on the last 8 weeks. The model with the lowest MAPE is refitted on the "
+                   "full history; the shaded band is an approximate 80% interval.")
         with st.container(border=True):
-            fig = go.Figure()
-            fig.add_scatter(x=np.concatenate([fc["future"], fc["future"][::-1]]),
-                            y=np.concatenate([fc["upper"], fc["lower"][::-1]]), fill="toself", mode="lines",
-                            fillcolor="rgba(200,85,61,0.12)", line=dict(width=0), name="80% interval", hoverinfo="skip")
-            fig.add_scatter(x=ser.index, y=ser.values, name="Actual", mode="lines",
-                            line=dict(color=ui.PRIMARY, width=2))
-            for name, p in fc["test_preds"].items():
-                fig.add_scatter(x=fc["test_dates"], y=p, name=f"Back-test: {name}", mode="lines",
-                                line=dict(dash="dot", width=1.5),
-                                visible=True if name == fc["best"] else "legendonly")
-            fig.add_scatter(x=fc["future"], y=fc["forecast"], name=f"Forecast ({fc['best']})", mode="lines+markers",
-                            line=dict(color=ui.ACCENT, width=2.5), marker=dict(size=5))
-            fig.add_vline(x=ser.index[-1], line_dash="dot", line_color="#94A3B8")
-            fig.update_layout(height=430, hovermode="x unified",
-                              legend=dict(orientation="h", y=-0.18, yanchor="top"),
-                              yaxis=MONEY if col == "Revenue" else {})
-            st.plotly_chart(fig, use_container_width=True)
+            c = st.columns(4)
+            target = c[0].selectbox("Target", ["Net revenue", "Units"])
+            level = c[1].selectbox("Level", ["Total", "Category", "City"])
+            choice = None
+            if level == "Category":
+                choice = c[2].selectbox("Category", cat_order[:40] if not sel_cat else sel_cat)
+            elif level == "City":
+                choice = c[2].selectbox("City", city_order[:30] if not sel_city else sel_city)
+            else:
+                c[2].selectbox("Scope", ["All filtered data"], disabled=True)
+            horizon = c[3].slider("Horizon (weeks)", 4, 16, 8)
+        col = "Revenue" if target == "Net revenue" else "Quantity"
+        base = fdf if level == "Total" else fdf[fdf[level] == choice]
+        ser = an.weekly_series(base, col)
 
-        nxt, last4 = fc["forecast"][:4].sum(), ser.values[-4:].sum()
-        best_row = fc["scores"].iloc[0]
-        fmt = (lambda v: an.fmt_money(v)) if col == "Revenue" else (lambda v: f"{v:,.0f}")
-        ui.kpi_row([
-            ui.kpi("Next 4 weeks", fmt(nxt), nxt / last4 - 1 if last4 else None, foot="vs last 4 weeks"),
-            ui.kpi(f"Next {horizon} weeks", fmt(fc["forecast"].sum()), foot="total forecast"),
-            ui.kpi("Selected model", best_row["Model"].split(" (")[0], foot="lowest back-test error"),
-            ui.kpi("Back-test MAPE", f"{best_row['MAPE (%)']:.1f}%", foot=f"MAE {fmt(best_row['MAE'])}"),
-        ])
-        c1, c2 = st.columns([2, 3])
-        with c1:
-            ui.section("Model comparison")
-            st.dataframe(fc["scores"], hide_index=True, use_container_width=True,
-                         column_config={"MAE": st.column_config.NumberColumn(format="%.0f"),
-                                        "MAPE (%)": st.column_config.NumberColumn(format="%.1f")})
-        with c2:
-            ui.section("Forecast table")
-            ft = pd.DataFrame({"Week starting": fc["future"].date, "Forecast": fc["forecast"],
-                               "Lower (80%)": fc["lower"], "Upper (80%)": fc["upper"]})
-            st.dataframe(ft, hide_index=True, use_container_width=True,
-                         column_config={k_: st.column_config.NumberColumn(format="%.0f")
-                                        for k_ in ["Forecast", "Lower (80%)", "Upper (80%)"]})
+        if len(ser) < 20:
+            st.info("Not enough weekly history for a reliable forecast. Widen the period or the selection.")
+        else:
+            fc = an.run_forecast(ser, horizon)
+            with st.container(border=True):
+                fig = go.Figure()
+                fig.add_scatter(x=np.concatenate([fc["future"], fc["future"][::-1]]),
+                                y=np.concatenate([fc["upper"], fc["lower"][::-1]]), fill="toself", mode="lines",
+                                fillcolor="rgba(200,85,61,0.12)", line=dict(width=0), name="80% interval", hoverinfo="skip")
+                fig.add_scatter(x=ser.index, y=ser.values, name="Actual", mode="lines",
+                                line=dict(color=ui.PRIMARY, width=2))
+                for name, p in fc["test_preds"].items():
+                    fig.add_scatter(x=fc["test_dates"], y=p, name=f"Back-test: {name}", mode="lines",
+                                    line=dict(dash="dot", width=1.5),
+                                    visible=True if name == fc["best"] else "legendonly")
+                fig.add_scatter(x=fc["future"], y=fc["forecast"], name=f"Forecast ({fc['best']})", mode="lines+markers",
+                                line=dict(color=ui.ACCENT, width=2.5), marker=dict(size=5))
+                fig.add_vline(x=ser.index[-1], line_dash="dot", line_color="#94A3B8")
+                fig.update_layout(height=430, hovermode="x unified",
+                                  legend=dict(orientation="h", y=-0.18, yanchor="top"),
+                                  yaxis=MONEY if col == "Revenue" else {})
+                st.plotly_chart(fig, use_container_width=True)
+
+            nxt, last4 = fc["forecast"][:4].sum(), ser.values[-4:].sum()
+            best_row = fc["scores"].iloc[0]
+            fmt = (lambda v: an.fmt_money(v)) if col == "Revenue" else (lambda v: f"{v:,.0f}")
+            ui.kpi_row([
+                ui.kpi("Next 4 weeks", fmt(nxt), nxt / last4 - 1 if last4 else None, foot="vs last 4 weeks"),
+                ui.kpi(f"Next {horizon} weeks", fmt(fc["forecast"].sum()), foot="total forecast"),
+                ui.kpi("Selected model", best_row["Model"].split(" (")[0], foot="lowest back-test error"),
+                ui.kpi("Back-test MAPE", f"{best_row['MAPE (%)']:.1f}%", foot=f"MAE {fmt(best_row['MAE'])}"),
+            ])
+            c1, c2 = st.columns([2, 3])
+            with c1:
+                ui.section("Model comparison")
+                st.dataframe(fc["scores"], hide_index=True, use_container_width=True,
+                             column_config={"MAE": st.column_config.NumberColumn(format="%.0f"),
+                                            "MAPE (%)": st.column_config.NumberColumn(format="%.1f")})
+            with c2:
+                ui.section("Forecast table")
+                ft = pd.DataFrame({"Week starting": fc["future"].date, "Forecast": fc["forecast"],
+                                   "Lower (80%)": fc["lower"], "Upper (80%)": fc["upper"]})
+                st.dataframe(ft, hide_index=True, use_container_width=True,
+                             column_config={k_: st.column_config.NumberColumn(format="%.0f")
+                                            for k_ in ["Forecast", "Lower (80%)", "Upper (80%)"]})
+
+    forecast_panel()
 
 # =============================================================================
 # Insights
@@ -531,13 +543,6 @@ with tabs[6]:
     if "chat" not in st.session_state:
         st.session_state.chat = []
 
-    st.markdown('<div class="chip-row">Examples</div>', unsafe_allow_html=True)
-    ex_cols = st.columns(4)
-    clicked = None
-    for i, s in enumerate(asst.SUGGESTIONS):
-        if ex_cols[i % 4].button(s, key=f"sug{i}", use_container_width=True):
-            clicked = s
-
     def render_answer(res: dict, idx: int) -> None:
         st.markdown(res["text"])
         if res.get("fig") is not None:
@@ -556,31 +561,44 @@ with tabs[6]:
             st.markdown(f'<div class="spec">Interpreted as: intent={sp.get("intent")} · metric={sp.get("metric")} · '
                         f'by={sp.get("dim")}{" · " + flt if flt else ""}</div>', unsafe_allow_html=True)
 
-    chat_box = st.container()
-    prompt = st.chat_input("e.g. En çok ciro getiren 10 şehir, or: monthly units for Polisiye")
-    question = prompt or clicked
-    if question:
-        spec = asst.llm_parse(question, vocab, api_key, st.secrets.get("ANTHROPIC_MODEL", "claude-haiku-5-5")) \
-            if api_key else None
-        spec = spec or asst.parse_question(question, vocab)
-        try:
-            result = asst.execute(spec, fdf, {"rfm": rfm, "rules": rules, "prod": prod})
-        except Exception as exc:  # keep the app alive on unexpected questions
-            result = {"text": f"I could not answer that question ({type(exc).__name__}). Try rephrasing it, "
-                              "for example by naming a measure and a dimension.", "df": None, "fig": None, "spec": spec}
-        st.session_state.chat.append({"q": question, "res": result})
+    @st.fragment
+    def assistant_panel() -> None:
+        st.markdown('<div class="chip-row">Examples</div>', unsafe_allow_html=True)
+        ex_cols = st.columns(4)
+        clicked = None
+        for i, s_ in enumerate(asst.SUGGESTIONS):
+            if ex_cols[i % 4].button(s_, key=f"sug{i}", use_container_width=True):
+                clicked = s_
+        with st.form("ask", clear_on_submit=True, border=False):
+            c1, c2 = st.columns([6, 1])
+            typed = c1.text_input("Question", placeholder="e.g. En çok ciro getiren 10 şehir · monthly units for Polisiye",
+                                  label_visibility="collapsed")
+            asked = c2.form_submit_button("Ask", use_container_width=True, type="primary")
+        question = (typed if asked and typed.strip() else None) or clicked
+        if question:
+            spec = asst.llm_parse(question, vocab, api_key, st.secrets.get("ANTHROPIC_MODEL", "claude-haiku-5-5")) \
+                if api_key else None
+            spec = spec or asst.parse_question(question, vocab)
+            try:
+                result = asst.execute(spec, fdf, {"rfm": rfm, "rules": rules, "prod": prod})
+            except Exception as exc:  # keep the app alive on unexpected questions
+                result = {"text": f"I could not answer that question ({type(exc).__name__}). Try rephrasing it, "
+                                  "for example by naming a measure and a dimension.", "df": None, "fig": None, "spec": spec}
+            st.session_state.chat.append({"q": question, "res": result})
 
-    with chat_box:
         if not st.session_state.chat:
-            st.caption("No questions yet. Pick an example above or type a question below.")
-        for i, turn in enumerate(st.session_state.chat):
-            with st.chat_message("user"):
+            st.caption("No questions yet. Pick an example or type a question above.")
+        for i in range(len(st.session_state.chat) - 1, -1, -1):  # newest first
+            turn = st.session_state.chat[i]
+            with st.chat_message("user", avatar=":material/person:"):
                 st.markdown(turn["q"])
-            with st.chat_message("assistant"):
+            with st.chat_message("assistant", avatar=":material/query_stats:"):
                 render_answer(turn["res"], i)
         if st.session_state.chat and st.button("Clear conversation"):
             st.session_state.chat = []
-            st.rerun()
+            st.rerun(scope="fragment")
+
+    assistant_panel()
 
 # =============================================================================
 # Data quality

@@ -55,7 +55,8 @@ html, body, [class*="css"], .stMarkdown, .stText, button, input, textarea, selec
 #MainMenu, footer, [data-testid="stDecoration"] {{ visibility: hidden; height: 0; }}
 [data-testid="stAppViewContainer"] > .main {{ background: {SURFACE}; }}
 .stApp {{ background: {SURFACE}; }}
-.block-container {{ padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1400px; }}
+[data-testid="stHeader"] {{ background: transparent; }}
+.block-container {{ padding-top: 3.4rem; padding-bottom: 3rem; max-width: 1400px; }}
 h1, h2, h3, h4 {{ color: {INK}; letter-spacing: -0.01em; }}
 
 /* header */
