@@ -50,7 +50,8 @@ pio.templates["dss"] = go.layout.Template(
         bargap=0.35,
     )
 )
-pio.templates.default = "plotly_white+dss"
+TEMPLATE = "plotly_white+dss"
+pio.templates.default = TEMPLATE
 px.defaults.template = "plotly_white+dss"
 px.defaults.color_discrete_sequence = PALETTE
 px.defaults.color_continuous_scale = SEQ
@@ -343,6 +344,7 @@ def dark_table(df: pd.DataFrame, max_rows: int = 10) -> str:
 
 def dark_fig(fig, height: int = 230):
     """Restyle a Plotly figure for the dark assistant rail."""
+    fig.update_layout(template=TEMPLATE)
     fig.update_layout(height=height, margin=dict(l=4, r=4, t=24, b=4), paper_bgcolor="rgba(0,0,0,0)",
                       plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#C9CBD6", size=10),
                       legend=dict(font=dict(color="#C9CBD6", size=10)))

@@ -134,6 +134,7 @@ with tabs[0]:
             fig = go.Figure(go.Pie(labels=orders_ct.index.astype(str), values=orders_ct.values, hole=0.72,
                                    marker=dict(colors=[ui.CORAL, ui.YELLOW, ui.PINK, ui.INK]), sort=False,
                                    textinfo="none", direction="clockwise"))
+            fig.update_layout(template=ui.TEMPLATE)
             fig.update_layout(height=200, showlegend=False, margin=dict(t=6, b=6, l=0, r=0),
                               annotations=[dict(text=f"<b>{an.fmt_money(k['aov'])}</b><br>avg order", showarrow=False,
                                                 font=dict(size=12, color=ui.INK))])
@@ -175,6 +176,7 @@ with tabs[0]:
         colors = [ui.GREY_BAR] * 7
         colors[int(wd.values.argmax())] = ui.PINK
         fig = go.Figure()
+        fig.update_layout(template=ui.TEMPLATE)
         fig.add_bar(x=[d[0] for d in WEEKDAYS], y=wd.values, marker=dict(color=colors, cornerradius=12),
                     hovertext=WEEKDAYS, hovertemplate="%{hovertext}: ₺%{y:,.0f}<extra></extra>")
         fig.add_scatter(x=[d[0] for d in WEEKDAYS], y=wd.values * 0.55, mode="lines", line=dict(color=ui.INK, width=1.6,
@@ -188,6 +190,7 @@ with tabs[0]:
     ui.section("Monthly performance", "Net revenue (bars) and number of orders (line).")
     with ui.card():
         fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.update_layout(template=ui.TEMPLATE)
         bar_colors = [ui.GREY_BAR] * len(mon)
         if len(mon):
             bar_colors[int(mon["Revenue"].values.argmax())] = ui.CORAL
@@ -455,6 +458,7 @@ with tabs[3]:
             wk = an.weekly_series(fdf, "Quantity").rename("Units").to_frame()
             wk["4-week average"] = wk["Units"].rolling(4).mean()
             fig = go.Figure()
+            fig.update_layout(template=ui.TEMPLATE)
             fig.add_bar(x=wk.index, y=wk["Units"], name="Units", marker_color=ui.GREY_BAR)
             fig.add_scatter(x=wk.index, y=wk["4-week average"], name="4-week average", mode="lines",
                             line=dict(color=ui.PINK, width=2.5))
@@ -505,6 +509,7 @@ with tabs[4]:
             fc = an.run_forecast(ser, horizon)
             with ui.card():
                 fig = go.Figure()
+                fig.update_layout(template=ui.TEMPLATE)
                 fig.add_scatter(x=np.concatenate([fc["future"], fc["future"][::-1]]),
                                 y=np.concatenate([fc["upper"], fc["lower"][::-1]]), fill="toself", mode="lines",
                                 fillcolor="rgba(226,85,138,0.13)", line=dict(width=0), name="80% interval", hoverinfo="skip")
