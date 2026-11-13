@@ -209,17 +209,17 @@ def inject_css() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
 
 
-_CARD_COUNTER = [0]
-
-
 def reset_cards() -> None:
-    _CARD_COUNTER[0] = 0
+    """Reset the per-session card counter at the start of every full script run."""
+    st.session_state["_card_n"] = 0
 
 
 def card():
-    """A rounded off-white card container (styled through its generated CSS class)."""
-    _CARD_COUNTER[0] += 1
-    return st.container(key=f"card_{_CARD_COUNTER[0]}")
+    """A rounded off-white card container (styled through its generated CSS class).
+    The counter lives in session state so concurrent user sessions never share keys."""
+    n = st.session_state.get("_card_n", 0) + 1
+    st.session_state["_card_n"] = n
+    return st.container(key=f"card_{n}")
 
 
 def esc(x) -> str:
