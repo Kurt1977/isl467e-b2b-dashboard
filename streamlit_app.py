@@ -607,7 +607,7 @@ def bot_bubble(html_text: str) -> str:
 def render_answer(turn: dict, idx: int) -> None:
     res = turn["res"]
     sp = res.get("spec") or {}
-    steps = "".join(f'<span class="step"><span class="tick">✓</span>{ui.esc(s_)}</span>'
+    steps = "".join(f'<span class="step"><span class="tick"></span>{ui.esc(s_)}</span>'
                     for s_ in turn.get("steps", []))
     if steps:
         st.markdown(f'<div class="trace">{steps}</div>', unsafe_allow_html=True)

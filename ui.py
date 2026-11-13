@@ -230,7 +230,8 @@ h1, h2, h3, h4 {{ color: {INK}; }}
 .trace {{ display:flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0 40px; }}
 .step {{ font-size: 10.5px; color: #A9ACBD !important; background: #191C2C; border: 1px solid #2A2E45;
          border-radius: 999px; padding: 3px 9px; }}
-.step .tick {{ color: #3DD68C !important; margin-right: 5px; font-weight: 700; }}
+.step .tick {{ display:inline-block; width:6px; height:6px; border-radius:50%; background:#3DD68C; margin-right:6px;
+               vertical-align: 1px; }}
 [class*="st-key-answer_card_"] {{ background: #1A1D2E; border: 1px solid #2A2E45; border-radius: 16px;
                                    padding: 10px 12px 12px 12px; margin-left: 0; overflow-x: auto; }}
 .scope {{ font-size: 10.5px; color: #6F7286 !important; margin-top: 6px; }}
