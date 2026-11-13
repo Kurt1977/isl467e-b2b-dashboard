@@ -1,42 +1,57 @@
-# 📚 B2B Book Distributor – Intelligent Decision Support Dashboard
+# B2B Book Distribution — Decision Support Dashboard
 
 **ISL 467E – Management Engineering Applications with Python · Homework I**
 
-An interactive Streamlit dashboard that turns 664K B2B transaction lines (2020) into a decision-support
-system for the **Sales**, **Marketing** and **Supply Chain** departments.
+An interactive Streamlit application that turns 664K B2B transaction lines (2020) into a decision-support
+system for the **sales**, **marketing** and **supply chain** functions of a book distributor.
 
-## Dashboard structure
+## Pages
 
-| Tab | Content |
+| Page | Content |
 |---|---|
-| 🏠 Executive Overview | 8 KPIs with month-over-month deltas, monthly revenue/orders, revenue mix by document type, customer type and city |
-| 💰 Sales | Category treemap, seasonality heatmap, best-selling titles, weekday × month pattern, dynamic group-by analysis |
-| 🎯 Marketing & Customers | RFM + K-Means segmentation (adjustable k), churn-risk win-back list, Pareto concentration, category association rules (support / confidence / lift), discount effectiveness |
-| 🚚 Supply Chain | ABC–XYZ classification, inventory policy simulator (safety stock, reorder point, EOQ by service level & lead time), weekly demand, regional demand |
-| 🔮 Forecast | Weekly revenue/unit forecast for total, category or city; back-tests Damped Holt, Gradient Boosting and Moving Average models and picks the best by MAPE, with an 80% interval |
-| 💡 Insights & Actions | Auto-generated, filter-aware insights per department + recommended actions + Excel analysis pack download |
-| 🧹 Data Quality | Step-by-step preprocessing log, missing values, discount distribution, clean data download |
+| Overview | Eight KPIs with month-over-month change, monthly revenue and orders, revenue mix |
+| Sales | Category treemap, seasonality heatmap, best-selling titles, weekday pattern, custom breakdown |
+| Customers & Marketing | RFM + K-Means segmentation, win-back list, customer concentration, category association rules, discount effectiveness |
+| Supply Chain | ABC–XYZ classification, inventory policy simulator (safety stock, reorder point, EOQ), weekly demand, regional demand |
+| Forecast | Weekly revenue / unit forecast for total, category or city; back-test of Damped Holt, Gradient Boosting and Moving Average, best model selected by MAPE, 80% interval |
+| Insights | Findings generated from the filtered data, recommended actions, Excel analysis pack |
+| Data Assistant | Ask questions in Turkish or English and receive an answer, a table, a chart and a CSV / Excel file |
+| Data Quality | Preprocessing log, missing values, discount distribution, clean data download |
 
-Global sidebar filters (date range, document type, customer type, city, category, Top-N) apply to all tabs.
+Sidebar filters (period, city, category, customer type, document type) apply to every page, including the assistant.
+
+## Data Assistant
+The assistant translates a question into a structured query (intent, measure, dimension, filters, ranking, chart type)
+and executes it with pandas, so every answer is computed from the data.
+
+* **Built-in engine (default):** rule-based parser for Turkish and English; no API key needed.
+* **LLM-assisted (optional):** add `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`) to the app's Secrets on
+  Streamlit Cloud. The model only produces the query spec; computation stays in pandas.
+
+Example questions: *"En çok ciro getiren 10 kategori hangisi?"*, *"İstanbul ve Ankara'nın aylık cirosunu karşılaştır"*,
+*"Show monthly units sold for Roman/Öykü"*, *"Önümüzdeki 8 haftanın satış tahmini"*, *"Churn riski olan en değerli müşteriler"*.
 
 ## Data preprocessing
 1. Type casting, whitespace trimming, city name harmonisation (IÇEL→MERSIN, K.MARAS→KAHRAMANMARAS, AFYON→AFYONKARAHISAR)
-2. Missing values: rows without quantity dropped; missing Category/City imputed as "Unknown"
-3. Invalid lines removed (zero quantity, non-positive net price, ~0 list price)
+2. Missing values: rows without quantity dropped; missing Category / City imputed as "Unknown"
+3. Invalid lines removed (zero quantity, non-positive net price, near-zero list price)
 4. Price consistency check (net price ≤ list price)
-5. Bulk-order outliers flagged (kept – normal for B2B)
-6. Feature engineering: revenue, list value, discount rate, document type, customer type, month/week/weekday/quarter
+5. Bulk-order outliers flagged and retained (normal B2B behaviour)
+6. Feature engineering: revenue, list value, discount rate, document type, customer type, month / week / weekday / quarter
 
-## Project files
+## Project structure
 ```
-streamlit_app.py      # main application
-requirements.txt      # dependencies
-data/                 # dataset
+streamlit_app.py      page layout and interactions
+data_pipeline.py      data loading and preprocessing
+analytics.py          KPIs, segmentation, basket rules, ABC-XYZ, inventory policy, forecasting, insights
+assistant.py          natural-language Data Assistant
+ui.py                 visual system (theme, chart template, components)
+requirements.txt      dependencies
+data/                 dataset
 .streamlit/config.toml
 ```
-> The original `B2B_Transaction_Data_.xlsx` (40 MB) exceeds GitHub's browser upload limit, so the identical data is
-> stored as two lossless compressed CSV parts (`data/B2B_Transaction_Data_part1/2.csv.xz`). If the original Excel file
-> is placed in `data/`, the app reads it automatically.
+The original `B2B_Transaction_Data_.xlsx` (40 MB) exceeds GitHub's browser upload limit, so the identical data is stored
+as two lossless compressed CSV parts in `data/`. If the Excel file is placed in `data/`, the app reads it directly.
 
 ## Run locally
 ```bash
