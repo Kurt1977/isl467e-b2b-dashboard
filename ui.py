@@ -38,7 +38,7 @@ pio.templates["dss"] = go.layout.Template(
     layout=dict(
         font=dict(family="Poppins, 'Segoe UI', Helvetica, Arial, sans-serif", size=12, color=TEXT),
         colorway=PALETTE,
-        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=CARD, paper_bgcolor=CARD,
         xaxis=dict(showgrid=False, linecolor="rgba(0,0,0,0)", ticks="", tickfont=dict(color=MUTED, size=11),
                    title=dict(font=dict(size=11, color=MUTED))),
         yaxis=dict(gridcolor="#E7E2DD", griddash="dot", zeroline=False, linecolor="rgba(0,0,0,0)",
@@ -345,8 +345,8 @@ def dark_table(df: pd.DataFrame, max_rows: int = 10) -> str:
 def dark_fig(fig, height: int = 230):
     """Restyle a Plotly figure for the dark assistant rail."""
     fig.update_layout(template=TEMPLATE)
-    fig.update_layout(height=height, margin=dict(l=4, r=4, t=24, b=4), paper_bgcolor="rgba(0,0,0,0)",
-                      plot_bgcolor="rgba(0,0,0,0)", font=dict(color="#C9CBD6", size=10),
+    fig.update_layout(height=height, margin=dict(l=4, r=4, t=24, b=4), paper_bgcolor=INK,
+                      plot_bgcolor=INK, font=dict(color="#C9CBD6", size=10),
                       legend=dict(font=dict(color="#C9CBD6", size=10)))
     fig.update_xaxes(tickfont=dict(color="#9A9DAA", size=9), title=None)
     fig.update_yaxes(tickfont=dict(color="#9A9DAA", size=9), gridcolor="#2C3048", title=None)
