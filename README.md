@@ -15,12 +15,13 @@ system for the **sales**, **marketing** and **supply chain** functions of a book
 | Supply Chain | ABC–XYZ classification, inventory policy simulator (safety stock, reorder point, EOQ), weekly demand, regional demand |
 | Forecast | Weekly revenue / unit forecast for total, category or city; back-test of Damped Holt, Gradient Boosting and Moving Average, best model selected by MAPE, 80% interval |
 | Insights | Findings generated from the filtered data, recommended actions, Excel analysis pack |
-| Data Assistant | Ask questions in Turkish or English and receive an answer, a table, a chart and a CSV / Excel file |
 | Data Quality | Preprocessing log, missing values, discount distribution, clean data download |
 
-Sidebar filters (period, city, category, customer type, document type) apply to every page, including the assistant.
+The **Filters** menu in the header (period, city, category, customer type, document type) applies to every page.
+The **Data Assistant** lives in the left rail and is available on every page.
 
-## Data Assistant
+## Data Assistant (left rail)
+Ask questions in Turkish or English and receive an answer, a table, a chart and a CSV / Excel file.
 The assistant translates a question into a structured query (intent, measure, dimension, filters, ranking, chart type)
 and executes it with pandas, so every answer is computed from the data.
 

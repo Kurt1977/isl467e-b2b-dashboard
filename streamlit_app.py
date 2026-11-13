@@ -24,7 +24,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-st.set_page_config(page_title="B2B Book Distribution · Decision Support", layout="wide",
+st.set_page_config(page_title="Sales Analytics · B2B Book Distribution", layout="wide",
                    initial_sidebar_state="expanded")
 
 import analytics as an  # noqa: E402  (imported after set_page_config on purpose)
@@ -46,25 +46,23 @@ def to_excel(frames: dict[str, pd.DataFrame]) -> bytes:
 
 
 # =============================================================================
-# Data & filters
+# Data & filters (header bar with a filter popover)
 # =============================================================================
 df, prep_log, quality = load_and_clean()
+dmin, dmax = df["InvoiceDate"].min().date(), df["InvoiceDate"].max().date()
+city_order = df.groupby("City", observed=True)["Revenue"].sum().sort_values(ascending=False).index.tolist()
+cat_order = df.groupby("Category", observed=True)["Revenue"].sum().sort_values(ascending=False).index.tolist()
 
-with st.sidebar:
-    st.markdown('<div class="side-title">Filters</div>', unsafe_allow_html=True)
-    dmin, dmax = df["InvoiceDate"].min().date(), df["InvoiceDate"].max().date()
-    dr = st.date_input("Period", value=(dmin, dmax), min_value=dmin, max_value=dmax)
-    start, end = (dr if isinstance(dr, (list, tuple)) and len(dr) == 2 else (dmin, dmax))
-    city_order = df.groupby("City", observed=True)["Revenue"].sum().sort_values(ascending=False).index.tolist()
-    cat_order = df.groupby("Category", observed=True)["Revenue"].sum().sort_values(ascending=False).index.tolist()
-    sel_city = st.multiselect("City", city_order, placeholder="All cities")
-    sel_cat = st.multiselect("Category", cat_order, placeholder="All categories")
-    sel_ctype = st.multiselect("Customer type", sorted(df["CustomerType"].cat.categories), placeholder="All types")
-    sel_doc = st.multiselect("Document type", sorted(df["DocType"].cat.categories), placeholder="All document types")
-    st.markdown('<div class="side-title" style="margin-top:22px">Display</div>', unsafe_allow_html=True)
-    show_n = st.slider("Items in rankings", 5, 30, 10)
-    st.caption(f"Source: B2B_Transaction_Data_.xlsx · {quality['raw_rows']:,} raw lines, "
-               f"{quality['clean_rows']:,} after cleaning.")
+h1, h2, h3 = st.columns([5, 3, 1.3], vertical_alignment="center")
+with h3:
+    with st.popover("Filters", use_container_width=True):
+        dr = st.date_input("Period", value=(dmin, dmax), min_value=dmin, max_value=dmax)
+        sel_city = st.multiselect("City", city_order, placeholder="All cities")
+        sel_cat = st.multiselect("Category", cat_order, placeholder="All categories")
+        sel_ctype = st.multiselect("Customer type", sorted(df["CustomerType"].cat.categories), placeholder="All types")
+        sel_doc = st.multiselect("Document type", sorted(df["DocType"].cat.categories), placeholder="All document types")
+        show_n = st.slider("Items in rankings", 5, 30, 10)
+start, end = (dr if isinstance(dr, (list, tuple)) and len(dr) == 2 else (dmin, dmax))
 
 mask = (df["InvoiceDate"].dt.date >= start) & (df["InvoiceDate"].dt.date <= end)
 for col, sel in [("City", sel_city), ("Category", sel_cat), ("CustomerType", sel_ctype), ("DocType", sel_doc)]:
@@ -73,16 +71,18 @@ for col, sel in [("City", sel_city), ("Category", sel_cat), ("CustomerType", sel
 fdf = df[mask]
 active_filters = sum(bool(x) for x in [sel_city, sel_cat, sel_ctype, sel_doc]) + int((start, end) != (dmin, dmax))
 
-ui.header(
-    "ISL 467E · Decision Support System",
-    "B2B Book Distribution — Performance & Planning",
-    "Sales, marketing and supply chain analytics on 2020 transaction data",
-    [("Period", f"{start:%d %b %Y} – {end:%d %b %Y}"), ("Lines in scope", f"{len(fdf):,}"),
-     ("Active filters", str(active_filters))],
-)
+with h1:
+    st.markdown('<div class="hdr-title">Sales Analytics</div>'
+                '<div class="hdr-sub">B2B book distribution · decision support for sales, marketing and supply chain</div>',
+                unsafe_allow_html=True)
+with h2:
+    st.markdown(f'<div style="text-align:right"><span class="pill"><span class="dot"></span>'
+                f'{start:%d %b %Y} – {end:%d %b %Y} · {len(fdf):,} lines'
+                f'{f" · {active_filters} filter(s)" if active_filters else ""}</span></div>', unsafe_allow_html=True)
+st.write("")
 
 if fdf.empty:
-    st.warning("No transactions match the current filters. Widen the selection in the sidebar.")
+    st.warning("No transactions match the current filters. Widen the selection in the Filters menu.")
     st.stop()
 
 # Shared analytical artefacts (cached)
@@ -91,8 +91,7 @@ rfm = an.rfm_segmentation(fdf[["CustomerID", "InvoiceDate", "InvoiceNo", "Revenu
 rules = an.category_associations(fdf[["InvoiceNo", "Category", "Revenue"]], 40, st.session_state.get("min_sup", 0.01))
 prod = an.abc_xyz(fdf[["StockCode", "Description", "Category", "Revenue", "Quantity", "CustomerID", "Week"]])
 
-tabs = st.tabs(["Overview", "Sales", "Customers & Marketing", "Supply Chain", "Forecast", "Insights",
-                "Data Assistant", "Data Quality"])
+tabs = st.tabs(["Overview", "Sales", "Customers & Marketing", "Supply Chain", "Forecast", "Insights", "Data Quality"])
 
 # =============================================================================
 # Overview
@@ -101,65 +100,119 @@ with tabs[0]:
     k = an.kpis(fdf)
     last_m = fdf["Month"].max()
     prev_m = last_m - pd.DateOffset(months=1)
-    kc, kp = an.kpis(fdf[fdf["Month"] == last_m]), an.kpis(fdf[fdf["Month"] == prev_m]) if (fdf["Month"] == prev_m).any() else None
+    kc = an.kpis(fdf[fdf["Month"] == last_m])
+    kp = an.kpis(fdf[fdf["Month"] == prev_m]) if (fdf["Month"] == prev_m).any() else None
 
     def rel(key):
         return None if kp is None or not kp[key] else kc[key] / kp[key] - 1
 
-    foot = f"{last_m:%b} vs {prev_m:%b}"
-    ui.section("Key indicators", f"Totals for the selected period. Changes compare {last_m:%B %Y} with the previous month.")
-    ui.kpi_row([
-        ui.kpi("Net revenue", an.fmt_money(k["revenue"]), rel("revenue"), foot=foot),
-        ui.kpi("Orders", f"{k['orders']:,}", rel("orders"), foot=foot),
-        ui.kpi("Active customers", f"{k['customers']:,}", rel("customers"), foot=foot),
-        ui.kpi("Average order value", an.fmt_money(k["aov"]), rel("aov"), foot=foot),
-    ])
+    mon = fdf.groupby("Month").agg(Revenue=("Revenue", "sum"), Orders=("InvoiceNo", "nunique")).reset_index()
+    ctype_share = fdf.groupby("CustomerType", observed=True)["Revenue"].sum()
+    ctype_share = (ctype_share / ctype_share.sum()).sort_values(ascending=False)
+    hero_stats = [(f"{n}", f"{v * 100:.0f}%") for n, v in ctype_share.head(3).items()]
     st.write("")
-    dd = None if kp is None else kc["discount"] - kp["discount"]
-    ui.kpi_row([
-        ui.kpi("Units sold", f"{k['units']:,.0f}", rel("units"), foot=foot),
-        ui.kpi("Average discount", f"{k['discount'] * 100:.1f}%", dd,
-               delta_text=None if dd is None else f"{dd * 100:+.1f} pp", higher_is_better=False, foot=foot),
-        ui.kpi("Gross value at list price", an.fmt_money(k["list"]), foot="before discounts"),
-        ui.kpi("Active SKUs", f"{k['skus']:,}", foot="titles sold at least once"),
-    ])
+    c1, c2, c3 = st.columns([1.25, 1, 1.05], gap="medium")
+    with c1:
+        d_rev = rel("revenue")
+        delta_txt = (f"{'↑' if d_rev >= 0 else '↓'} {abs(d_rev) * 100:.1f}% in {last_m:%B} vs {prev_m:%B}"
+                     if d_rev is not None else "")
+        st.markdown(ui.hero_card("Net revenue", an.fmt_money(k["revenue"]), delta_txt, mon["Revenue"].tolist(),
+                                 hero_stats), unsafe_allow_html=True)
+    with c2, st.container(border=True):
+        orders_ct = fdf.groupby("CustomerType", observed=True)["InvoiceNo"].nunique().sort_values(ascending=False)
+        top2 = orders_ct.head(2)
+        cc1, cc2 = st.columns([1, 1.1])
+        with cc1:
+            legend = "".join(
+                f'<div class="legend-row"><span class="legend-dot" style="background:{col_}"></span>{name}'
+                f'<b>{v / orders_ct.sum() * 100:.0f}%</b></div>'
+                for (name, v), col_ in zip(top2.items(), [ui.CORAL, ui.YELLOW]))
+            st.markdown(f'<div class="stat-label">Orders</div><div class="stat-value">{k["orders"]:,}</div>'
+                        f'{ui.badge(rel("orders"))}{legend}', unsafe_allow_html=True)
+        with cc2:
+            fig = go.Figure(go.Pie(labels=orders_ct.index.astype(str), values=orders_ct.values, hole=0.72,
+                                   marker=dict(colors=[ui.CORAL, ui.YELLOW, ui.PINK, ui.INK]), sort=False,
+                                   textinfo="none", direction="clockwise"))
+            fig.update_layout(height=200, showlegend=False, margin=dict(t=6, b=6, l=0, r=0),
+                              annotations=[dict(text=f"<b>{an.fmt_money(k['aov'])}</b><br>avg order", showarrow=False,
+                                                font=dict(size=12, color=ui.INK))])
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    with c3:
+        last_cust = kc["customers"] / max(k["customers"], 1)
+        st.markdown(ui.mini_tile(f"{k['customers']:,}", "customers", "Active customers",
+                                 last_cust, f"{kc['customers']:,} ordered in {last_m:%B} ({last_cust:.0%})", ui.CORAL),
+                    unsafe_allow_html=True)
+        st.write("")
+        st.markdown(ui.mini_tile(f"{k['discount'] * 100:.1f}%", "discount", "Average discount off list",
+                                 k["discount"], f"List-price value {an.fmt_money(k['list'])}", ui.INK),
+                    unsafe_allow_html=True)
+        st.write("")
+        mu = fdf.groupby("Month")["Quantity"].sum()
+        st.markdown(ui.mini_tile(f"{k['units'] / 1e6:.2f}M" if k["units"] >= 1e6 else f"{k['units']:,.0f}", "units",
+                                 "Units sold", mu.iloc[-1] / mu.max() if len(mu) else 0,
+                                 f"{last_m:%B} at {mu.iloc[-1] / mu.max():.0%} of peak month · {k['skus']:,} SKUs",
+                                 ui.PINK), unsafe_allow_html=True)
+
+    c1, c2 = st.columns([2.1, 1], gap="medium")
+    with c1, st.container(border=True):
+        ui.card_title("Top titles", f"Best sellers by net revenue · change = Q4 vs Q3")
+        q = fdf["InvoiceDate"].dt.quarter
+        tt = (fdf.groupby("Description", observed=True)
+              .agg(Revenue=("Revenue", "sum"), Units=("Quantity", "sum"), Category=("Category", "first"))
+              .nlargest(6, "Revenue"))
+        q4 = fdf[q == 4].groupby("Description", observed=True)["Revenue"].sum()
+        q3 = fdf[q == 3].groupby("Description", observed=True)["Revenue"].sum()
+        rows = []
+        for i, (title, r) in enumerate(tt.iterrows(), start=1):
+            g_ = (q4.get(title, 0) / q3.get(title, np.nan) - 1) if q3.get(title, 0) else None
+            rows.append({"title": title, "sub": f"#{i} · {r['Units']:,.0f} units", "cat": r["Category"],
+                         "value": an.fmt_money(r["Revenue"]), "badge": ui.badge(g_)})
+        st.markdown(ui.activity_list(rows), unsafe_allow_html=True)
+    with c2, st.container(border=True):
+        ui.card_title("Order days", "Revenue by weekday")
+        wd = fdf.groupby("Weekday")["Revenue"].sum().reindex(range(7), fill_value=0)
+        colors = [ui.GREY_BAR] * 7
+        colors[int(wd.values.argmax())] = ui.PINK
+        fig = go.Figure()
+        fig.add_bar(x=[d[0] for d in WEEKDAYS], y=wd.values, marker=dict(color=colors, cornerradius=12),
+                    hovertext=WEEKDAYS, hovertemplate="%{hovertext}: ₺%{y:,.0f}<extra></extra>")
+        fig.add_scatter(x=[d[0] for d in WEEKDAYS], y=wd.values * 0.55, mode="lines", line=dict(color=ui.INK, width=1.6,
+                        shape="spline"), hoverinfo="skip")
+        fig.update_layout(height=270, showlegend=False, bargap=0.45, yaxis=dict(showticklabels=False, showgrid=False))
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        best_day = WEEKDAYS[int(wd.values.argmax())]
+        st.markdown(f'<div class="legend-row" style="margin:0 0 6px 4px">Busiest day<b>{best_day} · '
+                    f'{wd.max() / wd.sum():.0%} of revenue</b></div>', unsafe_allow_html=True)
 
     ui.section("Monthly performance", "Net revenue (bars) and number of orders (line).")
     with st.container(border=True):
-        mon = fdf.groupby("Month").agg(Revenue=("Revenue", "sum"), Orders=("InvoiceNo", "nunique")).reset_index()
         fig = make_subplots(specs=[[{"secondary_y": True}]])
-        fig.add_bar(x=mon["Month"], y=mon["Revenue"], name="Net revenue", marker_color=ui.PRIMARY)
+        bar_colors = [ui.GREY_BAR] * len(mon)
+        if len(mon):
+            bar_colors[int(mon["Revenue"].values.argmax())] = ui.CORAL
+        fig.add_bar(x=mon["Month"], y=mon["Revenue"], name="Net revenue", marker=dict(color=bar_colors, cornerradius=10))
         fig.add_scatter(x=mon["Month"], y=mon["Orders"], name="Orders", mode="lines+markers",
-                        line=dict(color=ui.ACCENT, width=2.5), marker=dict(size=6), secondary_y=True)
-        fig.update_layout(height=360, hovermode="x unified")
+                        line=dict(color=ui.PINK, width=2.5, shape="spline"), marker=dict(size=6), secondary_y=True)
+        fig.update_layout(height=340, hovermode="x unified")
         fig.update_xaxes(dtick="M1", tickformat="%b")
         fig.update_yaxes(secondary_y=False, **MONEY)
         fig.update_yaxes(secondary_y=True, showgrid=False, title_text="Orders")
         st.plotly_chart(fig, use_container_width=True)
 
     ui.section("Revenue mix")
-    c1, c2, c3 = st.columns(3)
-    with c1, st.container(border=True):
-        ui.card_title("By document type")
-        dt = fdf.groupby("DocType", observed=True)["Revenue"].sum().sort_values().reset_index()
-        fig = px.bar(dt, x="Revenue", y="DocType", orientation="h", text_auto=".3s")
-        fig.update_traces(marker_color=ui.PRIMARY, textposition="outside", cliponaxis=False)
-        fig.update_layout(height=260, yaxis_title=None, xaxis_title=None, xaxis=dict(showticklabels=False))
-        st.plotly_chart(fig, use_container_width=True)
-    with c2, st.container(border=True):
-        ui.card_title("By customer type")
-        ct = fdf.groupby("CustomerType", observed=True)["Revenue"].sum().sort_values().reset_index()
-        fig = px.bar(ct, x="Revenue", y="CustomerType", orientation="h", text_auto=".3s")
-        fig.update_traces(marker_color=ui.PALETTE[1], textposition="outside", cliponaxis=False)
-        fig.update_layout(height=260, yaxis_title=None, xaxis_title=None, xaxis=dict(showticklabels=False))
-        st.plotly_chart(fig, use_container_width=True)
-    with c3, st.container(border=True):
-        ui.card_title("Top cities")
-        cy = fdf.groupby("City", observed=True)["Revenue"].sum().nlargest(6).sort_values().reset_index()
-        fig = px.bar(cy, x="Revenue", y="City", orientation="h", text_auto=".3s")
-        fig.update_traces(marker_color=ui.PALETTE[3], textposition="outside", cliponaxis=False)
-        fig.update_layout(height=260, yaxis_title=None, xaxis_title=None, xaxis=dict(showticklabels=False))
-        st.plotly_chart(fig, use_container_width=True)
+    c1, c2, c3 = st.columns(3, gap="medium")
+    for col_, (title, dim, color) in zip([c1, c2, c3], [("By document type", "DocType", ui.CORAL),
+                                                        ("By customer type", "CustomerType", ui.PINK),
+                                                        ("Top cities", "City", ui.INK)]):
+        with col_, st.container(border=True):
+            ui.card_title(title)
+            mix = fdf.groupby(dim, observed=True)["Revenue"].sum().nlargest(6).sort_values().reset_index()
+            mix[dim] = mix[dim].astype(str)
+            fig = px.bar(mix, x="Revenue", y=dim, orientation="h", text_auto=".3s")
+            fig.update_traces(marker=dict(color=color, cornerradius=8), textposition="outside", cliponaxis=False)
+            fig.update_layout(height=250, yaxis_title=None, xaxis_title=None, xaxis=dict(showticklabels=False),
+                              yaxis=dict(showgrid=False))
+            st.plotly_chart(fig, use_container_width=True)
 
 # =============================================================================
 # Sales
@@ -301,7 +354,7 @@ with tabs[2]:
             cs = rfm["Monetary"].sort_values(ascending=False).reset_index(drop=True)
             par = pd.DataFrame({"Customers": np.arange(1, len(cs) + 1) / len(cs), "Revenue": cs.cumsum() / cs.sum()})
             fig = px.area(par, x="Customers", y="Revenue")
-            fig.update_traces(line_color=ui.PRIMARY, fillcolor="rgba(15,76,92,0.12)")
+            fig.update_traces(line_color=ui.PRIMARY, fillcolor="rgba(239,123,92,0.15)")
             fig.add_hline(y=0.8, line_dash="dot", line_color=ui.ACCENT, annotation_text="80% of revenue",
                           annotation_font_color=ui.ACCENT)
             fig.update_layout(height=300, xaxis_tickformat=".0%", yaxis_tickformat=".0%",
@@ -401,9 +454,9 @@ with tabs[3]:
             wk = an.weekly_series(fdf, "Quantity").rename("Units").to_frame()
             wk["4-week average"] = wk["Units"].rolling(4).mean()
             fig = go.Figure()
-            fig.add_bar(x=wk.index, y=wk["Units"], name="Units", marker_color="#C9DCE0")
+            fig.add_bar(x=wk.index, y=wk["Units"], name="Units", marker_color=ui.GREY_BAR)
             fig.add_scatter(x=wk.index, y=wk["4-week average"], name="4-week average", mode="lines",
-                            line=dict(color=ui.PRIMARY, width=2.5))
+                            line=dict(color=ui.PINK, width=2.5))
             fig.update_layout(height=320, bargap=0.15)
             st.plotly_chart(fig, use_container_width=True)
     with c2:
@@ -453,16 +506,16 @@ with tabs[4]:
                 fig = go.Figure()
                 fig.add_scatter(x=np.concatenate([fc["future"], fc["future"][::-1]]),
                                 y=np.concatenate([fc["upper"], fc["lower"][::-1]]), fill="toself", mode="lines",
-                                fillcolor="rgba(200,85,61,0.12)", line=dict(width=0), name="80% interval", hoverinfo="skip")
+                                fillcolor="rgba(226,85,138,0.13)", line=dict(width=0), name="80% interval", hoverinfo="skip")
                 fig.add_scatter(x=ser.index, y=ser.values, name="Actual", mode="lines",
-                                line=dict(color=ui.PRIMARY, width=2))
+                                line=dict(color=ui.INK, width=2))
                 for name, p in fc["test_preds"].items():
                     fig.add_scatter(x=fc["test_dates"], y=p, name=f"Back-test: {name}", mode="lines",
                                     line=dict(dash="dot", width=1.5),
                                     visible=True if name == fc["best"] else "legendonly")
                 fig.add_scatter(x=fc["future"], y=fc["forecast"], name=f"Forecast ({fc['best']})", mode="lines+markers",
                                 line=dict(color=ui.ACCENT, width=2.5), marker=dict(size=5))
-                fig.add_vline(x=ser.index[-1], line_dash="dot", line_color="#94A3B8")
+                fig.add_vline(x=ser.index[-1], line_dash="dot", line_color=ui.MUTED)
                 fig.update_layout(height=430, hovermode="x unified",
                                   legend=dict(orientation="h", y=-0.18, yanchor="top"),
                                   yaxis=MONEY if col == "Revenue" else {})
@@ -528,82 +581,88 @@ with tabs[5]:
     )
 
 # =============================================================================
-# Data Assistant
+# Data Assistant (left rail)
 # =============================================================================
-with tabs[6]:
-    try:
-        api_key = st.secrets["ANTHROPIC_API_KEY"]
-    except Exception:
-        api_key = None
-    mode = "LLM-assisted (Claude)" if api_key else "Built-in query engine"
-    ui.section("Data Assistant",
-               "Ask questions about the data in Turkish or English. The assistant returns an answer, a table, a chart "
-               f"and a downloadable file, using the sidebar filters as its scope. Mode: {mode}.")
-    vocab = asst.build_vocab(df)
-    if "chat" not in st.session_state:
-        st.session_state.chat = []
+try:
+    api_key = st.secrets["ANTHROPIC_API_KEY"]
+except Exception:
+    api_key = None
+vocab = asst.build_vocab(df)
+if "chat" not in st.session_state:
+    st.session_state.chat = []
 
-    def render_answer(res: dict, idx: int) -> None:
-        st.markdown(res["text"])
-        if res.get("fig") is not None:
-            st.plotly_chart(res["fig"], use_container_width=True, key=f"chatfig{idx}")
-        if res.get("df") is not None and len(res["df"]):
-            st.dataframe(res["df"], hide_index=True, use_container_width=True)
-            c1, c2, _ = st.columns([1, 1, 4])
-            c1.download_button("Download CSV", res["df"].to_csv(index=False).encode("utf-8-sig"),
-                               file_name=f"assistant_result_{idx}.csv", mime="text/csv", key=f"csv{idx}")
-            c2.download_button("Download Excel", to_excel({"Result": res["df"]}),
-                               file_name=f"assistant_result_{idx}.xlsx", key=f"xlsx{idx}",
-                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        sp = res.get("spec", {})
-        if sp:
-            flt = asst.describe_filters(sp.get("filters", {}), "en")
-            st.markdown(f'<div class="spec">Interpreted as: intent={sp.get("intent")} · metric={sp.get("metric")} · '
-                        f'by={sp.get("dim")}{" · " + flt if flt else ""}</div>', unsafe_allow_html=True)
 
-    @st.fragment
-    def assistant_panel() -> None:
-        st.markdown('<div class="chip-row">Examples</div>', unsafe_allow_html=True)
-        ex_cols = st.columns(4)
-        clicked = None
-        for i, s_ in enumerate(asst.SUGGESTIONS):
-            if ex_cols[i % 4].button(s_, key=f"sug{i}", use_container_width=True):
-                clicked = s_
-        with st.form("ask", clear_on_submit=True, border=False):
-            c1, c2 = st.columns([6, 1])
-            typed = c1.text_input("Question", placeholder="e.g. En çok ciro getiren 10 şehir · monthly units for Polisiye",
-                                  label_visibility="collapsed")
-            asked = c2.form_submit_button("Ask", use_container_width=True, type="primary")
-        question = (typed if asked and typed.strip() else None) or clicked
-        if question:
-            spec = asst.llm_parse(question, vocab, api_key, st.secrets.get("ANTHROPIC_MODEL", "claude-haiku-5-5")) \
-                if api_key else None
-            spec = spec or asst.parse_question(question, vocab)
-            try:
-                result = asst.execute(spec, fdf, {"rfm": rfm, "rules": rules, "prod": prod})
-            except Exception as exc:  # keep the app alive on unexpected questions
-                result = {"text": f"I could not answer that question ({type(exc).__name__}). Try rephrasing it, "
-                                  "for example by naming a measure and a dimension.", "df": None, "fig": None, "spec": spec}
-            st.session_state.chat.append({"q": question, "res": result})
+def render_answer(res: dict, idx: int) -> None:
+    st.markdown(f'<div class="msg-bot">{ui.md_bold_to_html(res["text"]).replace(chr(10), "<br>")}</div>',
+                unsafe_allow_html=True)
+    if res.get("fig") is not None:
+        st.plotly_chart(ui.dark_fig(res["fig"]), use_container_width=True, key=f"chatfig{idx}",
+                        config={"displayModeBar": False})
+    if res.get("df") is not None and len(res["df"]):
+        st.markdown(ui.dark_table(res["df"]), unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        c1.download_button("CSV", res["df"].to_csv(index=False).encode("utf-8-sig"),
+                           file_name=f"assistant_result_{idx}.csv", mime="text/csv", key=f"csv{idx}",
+                           use_container_width=True)
+        c2.download_button("Excel", to_excel({"Result": res["df"]}), file_name=f"assistant_result_{idx}.xlsx",
+                           key=f"xlsx{idx}", use_container_width=True,
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    sp = res.get("spec") or {}
+    if sp:
+        flt = asst.describe_filters(sp.get("filters", {}), "en")
+        st.markdown(f'<div class="msg-spec">intent: {sp.get("intent")} · measure: {sp.get("metric")} · '
+                    f'by: {sp.get("dim")}{" · " + ui.esc(flt) if flt else ""}</div>', unsafe_allow_html=True)
 
-        if not st.session_state.chat:
-            st.caption("No questions yet. Pick an example or type a question above.")
+
+@st.fragment
+def assistant_panel() -> None:
+    mode = "Claude-assisted" if api_key else "Built-in query engine"
+    st.markdown(f'<div class="brand"><div class="brand-mark">AI</div><div><div class="brand-name">Data Assistant</div>'
+                f'<div class="brand-sub">Ask about the data · TR / EN · {mode}</div></div></div>',
+                unsafe_allow_html=True)
+    with st.form("ask", clear_on_submit=True, border=False):
+        c1, c2 = st.columns([4, 1.3])
+        typed = c1.text_input("Question", placeholder="Ask a question…", label_visibility="collapsed")
+        asked = c2.form_submit_button("Ask", use_container_width=True)
+    st.markdown('<div class="side-label">Try</div>', unsafe_allow_html=True)
+    clicked = None
+    for i, s_ in enumerate(asst.SUGGESTIONS[:6]):
+        if st.button(s_, key=f"sug{i}", use_container_width=True):
+            clicked = s_
+    question = (typed if asked and typed.strip() else None) or clicked
+    if question:
+        spec = asst.llm_parse(question, vocab, api_key, st.secrets.get("ANTHROPIC_MODEL", "claude-haiku-5-5")) \
+            if api_key else None
+        spec = spec or asst.parse_question(question, vocab)
+        try:
+            result = asst.execute(spec, fdf, {"rfm": rfm, "rules": rules, "prod": prod})
+        except Exception as exc:  # keep the app alive on unexpected questions
+            result = {"text": f"I could not answer that ({type(exc).__name__}). Try naming a measure and a "
+                              "dimension, e.g. 'revenue by city'.", "df": None, "fig": None, "spec": spec}
+        st.session_state.chat.append({"q": question, "res": result})
+
+    if st.session_state.chat:
+        st.markdown('<div class="side-label">Conversation</div>', unsafe_allow_html=True)
         for i in range(len(st.session_state.chat) - 1, -1, -1):  # newest first
             turn = st.session_state.chat[i]
-            with st.chat_message("user", avatar=":material/person:"):
-                st.markdown(turn["q"])
-            with st.chat_message("assistant", avatar=":material/query_stats:"):
-                render_answer(turn["res"], i)
-        if st.session_state.chat and st.button("Clear conversation"):
+            st.markdown(f'<div class="msg-user">{ui.esc(turn["q"])}</div>', unsafe_allow_html=True)
+            render_answer(turn["res"], i)
+        if st.button("Clear conversation", key="clear_chat"):
             st.session_state.chat = []
             st.rerun(scope="fragment")
+    st.markdown(f'<div class="side-label" style="margin-top:22px">Scope</div>'
+                f'<div class="brand-sub">Answers use the active filters · {len(fdf):,} lines · '
+                f'source data {quality["raw_rows"]:,} raw / {quality["clean_rows"]:,} clean lines</div>',
+                unsafe_allow_html=True)
 
+
+with st.sidebar:
     assistant_panel()
 
 # =============================================================================
 # Data quality
 # =============================================================================
-with tabs[7]:
+with tabs[6]:
     ui.section("Preprocessing pipeline", "Every cleaning step with its effect on the number of rows.")
     ui.kpi_row([
         ui.kpi("Raw lines", f"{quality['raw_rows']:,}", foot="as delivered"),
