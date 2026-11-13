@@ -778,14 +778,14 @@ with tabs[3]:
     prod = abc_xyz(fdf[["StockCode", "Description", "Category", "Revenue", "Quantity", "CustomerID", "Week"]])
     c1, c2 = st.columns([2, 3])
     with c1:
-        mat = prod.pivot_table(index="ABC", columns="XYZ", values="StockCode", aggfunc="count", fill_value=0)
+        mat = prod.pivot_table(index="ABC", columns="XYZ", values="StockCode", aggfunc="count", fill_value=0, observed=True)
         mat = mat.reindex(index=["A", "B", "C"], columns=["X", "Y", "Z"], fill_value=0)
         fig = px.imshow(mat, text_auto=True, color_continuous_scale="Teal", labels=dict(color="# SKUs"),
                         title="Number of SKUs per class")
         fig.update_layout(height=360, margin=dict(t=50, b=10))
         st.plotly_chart(fig, use_container_width=True)
     with c2:
-        rv = prod.pivot_table(index="ABC", columns="XYZ", values="Revenue", aggfunc="sum", fill_value=0)
+        rv = prod.pivot_table(index="ABC", columns="XYZ", values="Revenue", aggfunc="sum", fill_value=0, observed=True)
         rv = rv.reindex(index=["A", "B", "C"], columns=["X", "Y", "Z"], fill_value=0) / prod["Revenue"].sum()
         fig = px.imshow(rv, text_auto=".1%", color_continuous_scale="Blues", labels=dict(color="Revenue share"),
                         title="Revenue share per class")
@@ -875,7 +875,7 @@ with tabs[4]:
                             line=dict(dash="dot", width=1.5), visible="legendonly" if name != fc_result["best"] else True)
         fig.add_scatter(x=np.concatenate([fc_result["future"], fc_result["future"][::-1]]),
                         y=np.concatenate([fc_result["upper"], fc_result["lower"][::-1]]),
-                        fill="toself", fillcolor="rgba(224,122,95,0.18)", line=dict(width=0),
+                        fill="toself", fillcolor="rgba(224,122,95,0.18)", line=dict(width=0), mode="lines",
                         name="80% interval", hoverinfo="skip")
         fig.add_scatter(x=fc_result["future"], y=fc_result["forecast"], name=f"Forecast ({fc_result['best']})",
                         mode="lines+markers", line=dict(color=ACCENT, width=3))
