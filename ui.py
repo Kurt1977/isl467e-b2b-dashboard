@@ -171,7 +171,7 @@ h1, h2, h3, h4 {{ color: {INK}; }}
 .stDownloadButton button p {{ color: white; }}
 
 /* ---------- sidebar = assistant rail ---------- */
-[data-testid="stSidebar"] {{ background: {INK}; min-width: 400px !important; max-width: 400px !important; }}
+[data-testid="stSidebar"] {{ background: {INK}; min-width: 380px !important; max-width: 380px !important; }}
 [data-testid="stSidebar"] > div {{ background: {INK}; }}
 [data-testid="stSidebar"] * {{ color: #E8E9EE; }}
 [data-testid="stSidebarHeader"] {{ height: 0; padding: 0; }}
@@ -232,7 +232,7 @@ h1, h2, h3, h4 {{ color: {INK}; }}
          border-radius: 999px; padding: 3px 9px; }}
 .step .tick {{ color: #3DD68C !important; margin-right: 5px; font-weight: 700; }}
 [class*="st-key-answer_card_"] {{ background: #1A1D2E; border: 1px solid #2A2E45; border-radius: 16px;
-                                   padding: 10px 12px 12px 12px; margin-left: 40px; }}
+                                   padding: 10px 12px 12px 12px; margin-left: 0; overflow-x: auto; }}
 .scope {{ font-size: 10.5px; color: #6F7286 !important; margin-top: 6px; }}
 @keyframes fadeUp {{ from {{ opacity: 0; transform: translateY(6px); }} to {{ opacity: 1; transform: none; }} }}
 @keyframes blink {{ 50% {{ opacity: 0; }} }}
@@ -379,7 +379,7 @@ def dark_table(df: pd.DataFrame, max_rows: int = 10) -> str:
                 cls = "num"
             else:
                 s = str(v)
-                txt, cls = (s[:34] + "…" if len(s) > 35 else s), ""
+                txt, cls = (s[:24] + "…" if len(s) > 25 else s), ""
             cells.append(f'<td class="{cls}">{esc(txt)}</td>')
         body.append("<tr>" + "".join(cells) + "</tr>")
     more = f'<div class="msg-spec">Showing {len(d)} of {len(df)} rows · full table in the download.</div>' \
@@ -390,6 +390,9 @@ def dark_table(df: pd.DataFrame, max_rows: int = 10) -> str:
 def dark_fig(fig, height: int = 230):
     """Restyle a Plotly figure for the dark assistant rail."""
     fig.update_layout(template=TEMPLATE)
+    for tr_ in fig.data:  # shorten long category labels on horizontal bars
+        if getattr(tr_, "orientation", None) == "h" and tr_.y is not None:
+            tr_.y = [str(v)[:20] + "…" if len(str(v)) > 21 else v for v in tr_.y]
     fig.update_layout(height=height, margin=dict(l=4, r=4, t=24, b=4), paper_bgcolor=INK,
                       plot_bgcolor=INK, font=dict(color="#C9CBD6", size=10, family="Poppins, sans-serif"),
                       legend=dict(font=dict(color="#C9CBD6", size=10)))
