@@ -346,8 +346,19 @@ def dark_fig(fig, height: int = 230):
     """Restyle a Plotly figure for the dark assistant rail."""
     fig.update_layout(template=TEMPLATE)
     fig.update_layout(height=height, margin=dict(l=4, r=4, t=24, b=4), paper_bgcolor=INK,
-                      plot_bgcolor=INK, font=dict(color="#C9CBD6", size=10),
+                      plot_bgcolor=INK, font=dict(color="#C9CBD6", size=10, family="Poppins, sans-serif"),
                       legend=dict(font=dict(color="#C9CBD6", size=10)))
     fig.update_xaxes(tickfont=dict(color="#9A9DAA", size=9), title=None)
     fig.update_yaxes(tickfont=dict(color="#9A9DAA", size=9), gridcolor="#2C3048", title=None)
     return fig
+
+
+def chart(fig, **kwargs):
+    """Render a Plotly figure with explicit card colours and font (Streamlit's frontend would otherwise
+    replace template-level background and font with the app theme)."""
+    if fig.layout.paper_bgcolor is None:
+        fig.update_layout(paper_bgcolor=CARD, plot_bgcolor=CARD)
+    if fig.layout.font.family is None:
+        fig.update_layout(font=dict(family="Poppins, 'Segoe UI', Helvetica, Arial, sans-serif", color=TEXT, size=12))
+    kwargs.setdefault("config", {"displayModeBar": False})
+    return st.plotly_chart(fig, theme=None, **kwargs)

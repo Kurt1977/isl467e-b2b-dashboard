@@ -138,7 +138,7 @@ with tabs[0]:
             fig.update_layout(height=200, showlegend=False, margin=dict(t=6, b=6, l=0, r=0),
                               annotations=[dict(text=f"<b>{an.fmt_money(k['aov'])}</b><br>avg order", showarrow=False,
                                                 font=dict(size=12, color=ui.INK))])
-            st.plotly_chart(fig, theme=None, use_container_width=True, config={"displayModeBar": False})
+            ui.chart(fig, use_container_width=True, config={"displayModeBar": False})
     with c3:
         last_cust = kc["customers"] / max(k["customers"], 1)
         st.markdown(ui.mini_tile(f"{k['customers']:,}", "customers", "Active customers",
@@ -182,7 +182,7 @@ with tabs[0]:
         fig.add_scatter(x=[d[0] for d in WEEKDAYS], y=wd.values * 0.55, mode="lines", line=dict(color=ui.INK, width=1.6,
                         shape="spline"), hoverinfo="skip")
         fig.update_layout(height=270, showlegend=False, bargap=0.45, yaxis=dict(showticklabels=False, showgrid=False))
-        st.plotly_chart(fig, theme=None, use_container_width=True, config={"displayModeBar": False})
+        ui.chart(fig, use_container_width=True, config={"displayModeBar": False})
         best_day = WEEKDAYS[int(wd.values.argmax())]
         st.markdown(f'<div class="legend-row" style="margin:0 0 6px 4px">Busiest day<b>{best_day} · '
                     f'{wd.max() / wd.sum():.0%} of revenue</b></div>', unsafe_allow_html=True)
@@ -201,7 +201,7 @@ with tabs[0]:
         fig.update_xaxes(dtick="M1", tickformat="%b")
         fig.update_yaxes(secondary_y=False, **MONEY)
         fig.update_yaxes(secondary_y=True, showgrid=False, title_text="Orders")
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
 
     ui.section("Revenue mix")
     c1, c2, c3 = st.columns(3, gap="medium")
@@ -216,7 +216,7 @@ with tabs[0]:
             fig.update_traces(marker=dict(color=color, cornerradius=8), textposition="outside", cliponaxis=False)
             fig.update_layout(height=250, yaxis_title=None, xaxis_title=None, xaxis=dict(showticklabels=False),
                               yaxis=dict(showgrid=False))
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
 
 # =============================================================================
 # Sales
@@ -235,7 +235,7 @@ with tabs[1]:
         fig.update_traces(marker=dict(cornerradius=3), root_color="white",
                           hovertemplate="<b>%{label}</b><br>Revenue ₺%{value:,.0f}<extra></extra>")
         fig.update_layout(height=430, margin=dict(t=10, l=0, r=0, b=0), coloraxis_colorbar=dict(title="Disc.", tickformat=".0%"))
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
     with c2, ui.card():
         ui.card_title(f"Top {show_n} categories")
         st.dataframe(cat.head(show_n)[["Category", "Revenue", "Units", "Share"]], hide_index=True,
@@ -254,7 +254,7 @@ with tabs[1]:
         hm.columns = [f"{c:%b}" for c in hm.columns]
         fig = px.imshow(hm, aspect="auto", color_continuous_scale=ui.SEQ, labels=dict(color="Revenue", x="", y=""))
         fig.update_layout(height=420, margin=dict(t=10))
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
 
     c1, c2 = st.columns(2)
     with c1:
@@ -268,7 +268,7 @@ with tabs[1]:
                          hover_data={"Units": ":,.0f", "Customers": True, "Title": False, "Description": True})
             fig.update_traces(marker_color=ui.PRIMARY)
             fig.update_layout(height=max(340, 30 * show_n), yaxis_title=None, xaxis=MONEY)
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
     with c2:
         ui.section("Order-day pattern", "Revenue by weekday and month.")
         with ui.card():
@@ -277,7 +277,7 @@ with tabs[1]:
             wd.columns = [f"{c:%b}" for c in wd.columns]
             fig = px.imshow(wd, aspect="auto", color_continuous_scale=ui.SEQ_WARM, labels=dict(color="Revenue", x="", y=""))
             fig.update_layout(height=max(340, 30 * show_n), margin=dict(t=10))
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
 
     @st.fragment
     def custom_breakdown() -> None:
@@ -300,7 +300,7 @@ with tabs[1]:
                    else px.line(dyn, x=dims[g], y=col, markers=True))
             fig.update_traces(marker_color=ui.PRIMARY) if ctype == "Bar" else fig.update_traces(line_color=ui.PRIMARY)
             fig.update_layout(height=360, yaxis_title=mname, xaxis_title=None)
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
 
     custom_breakdown()
 
@@ -325,14 +325,14 @@ with tabs[2]:
                          color_discrete_map=seg_colors, size_max=36, opacity=0.75,
                          hover_data={"CustomerID": True, "Monetary": ":,.0f", "City": True})
         fig.update_layout(height=400, xaxis_title="Days since last order", yaxis_title="Orders (log)")
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
     with c2, ui.card():
         ui.card_title("Revenue share by segment")
         fig = px.bar(seg, x="RevenueShare", y="Segment", orientation="h", color="Segment",
                      color_discrete_map=seg_colors, text_auto=".0%")
         fig.update_layout(height=400, showlegend=False, xaxis_tickformat=".0%", xaxis_title=None, yaxis_title=None,
                           yaxis=dict(categoryorder="total ascending"))
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
     st.dataframe(seg, hide_index=True, use_container_width=True,
                  column_config={"Revenue": st.column_config.NumberColumn(format="₺%.0f"),
                                 "AvgRevenue": st.column_config.NumberColumn("Avg revenue per customer", format="₺%.0f"),
@@ -363,7 +363,7 @@ with tabs[2]:
                           annotation_font_color=ui.ACCENT)
             fig.update_layout(height=300, xaxis_tickformat=".0%", yaxis_tickformat=".0%",
                               xaxis_title="Share of customers", yaxis_title="Cumulative revenue")
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
 
     ui.section("Cross-selling opportunities",
                "Category pairs that appear on the same invoice more often than chance (association rules).")
@@ -390,7 +390,7 @@ with tabs[2]:
         fig = px.bar(dband, x="Band", y="UnitsPerLine", color="CustomerType", barmode="group",
                      labels={"Band": "Discount off list price", "UnitsPerLine": "Units per line", "CustomerType": ""})
         fig.update_layout(height=340)
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
 
 # =============================================================================
 # Supply chain
@@ -406,14 +406,14 @@ with tabs[3]:
         mat = mat.reindex(index=["A", "B", "C"], columns=["X", "Y", "Z"], fill_value=0)
         fig = px.imshow(mat, text_auto=",.0f", color_continuous_scale=ui.SEQ, labels=dict(color="SKUs", x="", y=""))
         fig.update_layout(height=320, margin=dict(t=10), coloraxis_showscale=False)
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
     with c2, ui.card():
         ui.card_title("Share of revenue")
         rv = prod.pivot_table(index="ABC", columns="XYZ", values="Revenue", aggfunc="sum", fill_value=0, observed=True)
         rv = rv.reindex(index=["A", "B", "C"], columns=["X", "Y", "Z"], fill_value=0) / prod["Revenue"].sum()
         fig = px.imshow(rv, text_auto=".1%", color_continuous_scale=ui.SEQ, labels=dict(color="Share", x="", y=""))
         fig.update_layout(height=320, margin=dict(t=10), coloraxis_showscale=False)
-        st.plotly_chart(fig, theme=None, use_container_width=True)
+        ui.chart(fig, use_container_width=True)
 
     @st.fragment
     def inventory_simulator() -> None:
@@ -463,7 +463,7 @@ with tabs[3]:
             fig.add_scatter(x=wk.index, y=wk["4-week average"], name="4-week average", mode="lines",
                             line=dict(color=ui.PINK, width=2.5))
             fig.update_layout(height=320, bargap=0.15)
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
     with c2:
         ui.section("Regional demand profile", "Order count vs. drop size for the 15 largest cities.")
         with ui.card():
@@ -476,7 +476,7 @@ with tabs[3]:
             fig.update_traces(textposition="top center", marker=dict(color=ui.PRIMARY, opacity=0.6),
                               textfont=dict(size=10, color=ui.MUTED))
             fig.update_layout(height=320)
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
 
 # =============================================================================
 # Forecast
@@ -525,7 +525,7 @@ with tabs[4]:
                 fig.update_layout(height=430, hovermode="x unified",
                                   legend=dict(orientation="h", y=-0.18, yanchor="top"),
                                   yaxis=MONEY if col == "Revenue" else {})
-                st.plotly_chart(fig, theme=None, use_container_width=True)
+                ui.chart(fig, use_container_width=True)
 
             nxt, last4 = fc["forecast"][:4].sum(), ser.values[-4:].sum()
             best_row = fc["scores"].iloc[0]
@@ -602,7 +602,7 @@ def render_answer(res: dict, idx: int) -> None:
     st.markdown(f'<div class="msg-bot">{ui.md_bold_to_html(res["text"]).replace(chr(10), "<br>")}</div>',
                 unsafe_allow_html=True)
     if res.get("fig") is not None:
-        st.plotly_chart(ui.dark_fig(res["fig"]), theme=None, use_container_width=True, key=f"chatfig{idx}",
+        ui.chart(ui.dark_fig(res["fig"]), use_container_width=True, key=f"chatfig{idx}",
                         config={"displayModeBar": False})
     if res.get("df") is not None and len(res["df"]):
         st.markdown(ui.dark_table(res["df"]), unsafe_allow_html=True)
@@ -688,7 +688,7 @@ with tabs[6]:
             fig = px.bar(miss, x="Column", y="Missing", text_auto=",.0f")
             fig.update_traces(marker_color=ui.ACCENT)
             fig.update_layout(height=300, xaxis_title=None)
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
     with c2:
         ui.section("Discount rate distribution", "Sample of up to 100,000 lines.")
         with ui.card():
@@ -696,7 +696,7 @@ with tabs[6]:
             fig.update_traces(marker_color=ui.PRIMARY)
             fig.update_layout(height=300, xaxis_tickformat=".0%", xaxis_title="Discount off list price",
                               yaxis_title="Lines")
-            st.plotly_chart(fig, theme=None, use_container_width=True)
+            ui.chart(fig, use_container_width=True)
 
     ui.section("Clean data preview")
     st.dataframe(fdf.head(200), use_container_width=True, hide_index=True)
